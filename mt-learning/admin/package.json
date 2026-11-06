@@ -1,0 +1,28 @@
+{
+  "name": "mt-tablet-admin",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "typecheck": "tsc -b",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@fontsource-variable/nunito-sans": "^5.3.0",
+    "@fontsource/ibm-plex-sans": "^5.2.5",
+    "@tanstack/react-query": "^5.105.0",
+    "katex": "^0.16.21",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-router-dom": "^7.18.5"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^5.2.0",
+    "typescript": "5.8",
+    "vite": "^7.3.7"
+  }
+}

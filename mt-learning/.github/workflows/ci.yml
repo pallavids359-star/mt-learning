@@ -1,0 +1,92 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    name: API (NestJS)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: mt
+          POSTGRES_PASSWORD: mt
+          POSTGRES_DB: mt_tablet_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U mt" --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - name: Check migrations match the schema
+        run: |
+          npx drizzle-kit generate --name ci-check
+          git diff --exit-code --stat -- drizzle || (echo "::error::Schema changed without a migration. Run npm run db:generate and commit it." && exit 1)
+          test -z "$(git status --porcelain -- drizzle)" || (echo "::error::Uncommitted migration generated." && git status -- drizzle && exit 1)
+      - run: npm test
+      - run: npm run test:e2e
+        env:
+          TEST_DATABASE_URL: postgresql://mt:mt@localhost:5432/mt_tablet_test
+      - run: npm run build
+
+  admin:
+    name: Admin portal (React)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: admin
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: admin/package-lock.json
+      - run: npm ci
+      - run: npm run build
+
+  student-app:
+    name: Student app (Flutter)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: student_app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze --no-fatal-infos
+      - run: flutter test
+      - name: Generate Android project if it is not committed yet
+        run: ./tool/setup_android.sh
+      - name: Build release APK
+        run: flutter build apk --release --dart-define=API_BASE_URL=${{ vars.API_BASE_URL || 'https://api.example.edu' }} --dart-define=BRIDGE_URL=${{ vars.BRIDGE_URL || '' }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: student-app-apk
+          path: student_app/build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 14
