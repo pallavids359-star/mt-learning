@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+﻿import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { parse } from 'csv-parse/sync';
@@ -11,7 +11,7 @@ import { Permission, roleHas } from '../common/permissions';
 import { hashSecret, temporaryPassword } from '../common/utils/secrets';
 import { IMAGE_TYPES, sniffImage, StorageService } from '../common/utils/storage.service';
 import { InjectDb, type Database } from '../db/db.module';
-import { academicYears, classes, hostels, sections, students, tablets, type AccountStatus } from '../db/schema';
+import { academicYears, classes, hostels, sections, students, tablets, testAttempts, type AccountStatus } from '../db/schema';
 import {
   CreateStudentDto,
   ImportQueryDto,
@@ -104,7 +104,7 @@ export class StudentsService {
       where.push(or(ilike(students.fullName, p), ilike(students.studentCode, p), ilike(students.rollNumber, p))!);
     }
     const cond = where.length ? and(...where) : undefined;
-    const [rows, [{ total }]] = await Promise.all([
+    const [rows, [{ total }], [counts]] = await Promise.all([
       this.baseQuery()
         .where(cond)
         .orderBy(asc(classes.name), asc(sections.name), sql`length(${students.rollNumber})`, asc(students.rollNumber))
@@ -117,12 +117,38 @@ export class StudentsService {
         .innerJoin(classes, eq(classes.id, sections.classId))
         .leftJoin(tablets, eq(tablets.studentId, students.id))
         .where(cond),
+      // The tabs above the list: every student, hostel, day scholars, and those without a tablet.
+      this.db
+        .select({
+          all: count(),
+          hostel: sql<number>`count(*) filter (where ${students.hostelId} is not null)::int`,
+          day: sql<number>`count(*) filter (where ${students.hostelId} is null)::int`,
+          noTablet: sql<number>`count(*) filter (where ${tablets.id} is null)::int`,
+        })
+        .from(students)
+        .leftJoin(tablets, eq(tablets.studentId, students.id)),
     ]);
-    return pageOf(
-      rows.map((r) => this.view(actor, r)),
-      total,
-      q,
-    );
+    // Each student's average across live tests (only results that count: not waiting for review or rejected).
+    const ids = rows.map((r) => r.id);
+    const averages = ids.length
+      ? await this.db
+          .select({
+            studentId: testAttempts.studentId,
+            avg: sql<number | null>`round(avg(${testAttempts.score} / nullif(${testAttempts.maxScore}, 0)) * 1000) / 10`,
+          })
+          .from(testAttempts)
+          .where(and(inArray(testAttempts.studentId, ids), isNotNull(testAttempts.submittedAt), sql`${testAttempts.reviewStatus} in ('NONE','ACCEPTED')`))
+          .groupBy(testAttempts.studentId)
+      : [];
+    const avgOf = new Map(averages.map((a) => [a.studentId, a.avg === null ? null : Number(a.avg)]));
+    return {
+      ...pageOf(
+        rows.map((r) => ({ ...this.view(actor, r), averagePercent: avgOf.get(r.id) ?? null })),
+        total,
+        q,
+      ),
+      counts,
+    };
   }
 
   async get(actor: StaffPrincipal, id: string) {

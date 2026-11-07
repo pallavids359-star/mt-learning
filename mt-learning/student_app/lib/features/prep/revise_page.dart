@@ -7,6 +7,7 @@ import '../../core/widgets.dart';
 import '../../data/api_client.dart';
 import '../../data/prep_models.dart';
 import 'attempt_screen.dart';
+import '../shell/app_shell.dart';
 import 'exam_choice.dart';
 
 /// Revise: retry questions answered wrong, and practise saved (bookmarked) questions.

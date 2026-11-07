@@ -1,0 +1,60 @@
+﻿/* Staff sign-in, Navy & Gold design. */
+
+.lg { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); background: var(--bg); }
+
+/* Left: navy panel with a faint gold dot grid */
+.lg-art { position: relative; overflow: hidden; background-color: var(--navy); background-image: radial-gradient(rgb(206 164 52 / 16%) 1.2px, transparent 1.3px); background-size: 26px 26px; color: #c9d2e1; padding: 44px clamp(28px, 4.5vw, 64px); display: flex; flex-direction: column; gap: 40px; }
+.lg-art::after { content: ''; position: absolute; right: -120px; bottom: -120px; width: 360px; height: 360px; border-radius: 50%; border: 56px solid rgb(206 164 52 / 10%); pointer-events: none; }
+.lg-brand { display: flex; align-items: center; gap: 12px; color: #fff; }
+.lg-brand strong { display: block; font-family: var(--display); font-size: 18px; font-weight: 700; }
+.lg-brand em { display: block; font-style: normal; font-size: 12.5px; color: #a9b6ca; }
+.lg-logo { width: 44px; height: 44px; border-radius: 12px; background: var(--gold); color: var(--navy); display: grid; place-items: center; font-family: var(--display); font-weight: 800; font-size: 16px; flex: none; }
+.lg-logo.small { width: 48px; height: 48px; border-radius: 14px; font-size: 17px; box-shadow: 0 8px 20px rgb(206 164 52 / 30%); }
+
+.lg-pitch { margin-top: auto; display: grid; gap: 16px; max-width: 560px; }
+.lg-eyebrow { display: inline-flex; justify-self: start; padding: 5px 12px; border-radius: 999px; background: rgb(206 164 52 / 14%); color: var(--gold); font-size: 12.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.lg-pitch h2 { color: #fff; font-family: var(--display); font-size: clamp(34px, 3.6vw, 52px); font-weight: 800; line-height: 1.08; letter-spacing: -0.02em; }
+.lg-pitch h2 span { color: var(--gold); }
+.lg-pitch p { font-size: 16.5px; line-height: 1.6; color: #bac5d6; max-width: 46ch; }
+
+.lg-features { list-style: none; margin: 0 0 auto; padding: 0; display: grid; gap: 12px; max-width: 520px; position: relative; z-index: 1; }
+.lg-features li { display: flex; gap: 14px; align-items: flex-start; padding: 14px 16px; border-radius: 14px; background: rgb(255 255 255 / 5%); border: 1px solid rgb(255 255 255 / 8%); }
+.lg-features i { width: 38px; height: 38px; border-radius: 10px; background: rgb(206 164 52 / 16%); color: var(--gold); display: grid; place-items: center; flex: none; }
+.lg-features i svg { width: 19px; height: 19px; }
+.lg-features li > span { display: grid; gap: 2px; }
+.lg-features b { color: #fff; font-weight: 600; }
+.lg-features li > span > span { font-size: 13.5px; color: #a9b6ca; }
+.lg-foot { font-size: 12.5px; color: #94a3bb; position: relative; z-index: 1; }
+
+/* Right: the sign-in card */
+.lg-side { display: grid; place-items: center; padding: 40px 24px; }
+.lg-card { width: min(440px, 100%); background: var(--surface); border: 1px solid var(--line); border-radius: 22px; box-shadow: 0 1px 2px rgb(15 27 46 / 4%), 0 24px 60px rgb(15 27 46 / 10%); padding: 36px 34px 30px; display: grid; gap: 18px; }
+.lg-title { display: grid; gap: 6px; margin-bottom: 4px; }
+.lg-title h1 { font-family: var(--display); font-size: 28px; font-weight: 700; letter-spacing: -0.01em; }
+.lg-title p { color: var(--ink-2); font-size: 14.5px; }
+
+.lg-field { display: grid; gap: 7px; }
+.lg-field > span:first-child { font-size: 13.5px; font-weight: 600; color: var(--ink); }
+.lg-input { display: flex; align-items: center; gap: 10px; padding: 0 6px 0 14px; border-radius: 12px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-3); transition: border-color 0.12s, box-shadow 0.12s; }
+.lg-input:focus-within { border-color: var(--navy); box-shadow: 0 0 0 4px rgb(18 41 73 / 10%); color: var(--navy); }
+.lg-input > svg { width: 18px; height: 18px; flex: none; }
+.lg-input input, .lg-input input:focus { border: 0; box-shadow: none; background: transparent; padding: 0; min-height: 48px; font-size: 15px; outline: none; color: var(--ink); }
+.lg-input input:-webkit-autofill { -webkit-box-shadow: 0 0 0 40px #fff inset; }
+.lg-eye { border: 0; background: var(--sunk); color: var(--ink-2); font-weight: 600; font-size: 13px; padding: 7px 12px; border-radius: 8px; cursor: pointer; flex: none; }
+.lg-eye:hover { background: #e7ecf4; color: var(--navy); }
+
+.lg-submit { width: 100%; min-height: 50px; border-radius: 12px; font-size: 15.5px; margin-top: 4px; }
+.lg-submit svg { width: 17px; height: 17px; }
+.lg-help { text-align: center; font-size: 13.5px; color: var(--ink-2); }
+.lg-secure { display: flex; align-items: center; justify-content: center; gap: 8px; padding-top: 14px; border-top: 1px solid #ecedf1; font-size: 12.5px; color: var(--ink-3); }
+.lg-secure svg { width: 16px; height: 16px; color: var(--gold-ink); }
+
+@media (max-width: 900px) {
+  .lg { grid-template-columns: minmax(0, 1fr); }
+  .lg-art { padding: 24px 20px 28px; gap: 18px; }
+  .lg-pitch { margin-top: 8px; }
+  .lg-pitch h2 { font-size: 28px; }
+  .lg-pitch p, .lg-features, .lg-foot, .lg-art::after { display: none; }
+  .lg-side { padding: 24px 16px 40px; }
+  .lg-card { padding: 28px 22px 24px; }
+}

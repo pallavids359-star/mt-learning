@@ -26,6 +26,21 @@ const EXAM_META: Record<string, { name: string; correct: number; incorrect: numb
   KCET: { name: 'Karnataka CET', correct: 1, incorrect: 0, minutes: 240, order: 3 },
 };
 
+/**
+ * Only these three exams are offered. GenPrep tags some questions with other names for the
+ * same exam (JEE MAIN, JEE ADVANCED, NEET/JEE); those count towards the exams listed here,
+ * and any other tag is not shown.
+ */
+const EXAM_TAGS: Record<string, string[]> = {
+  NEET: ['NEET', 'NEET/JEE', 'NEET UG'],
+  JEE: ['JEE', 'JEE MAIN', 'JEE MAINS', 'JEE ADVANCED', 'NEET/JEE'],
+  KCET: ['KCET', 'CET', 'K-CET'],
+};
+const tagsOf = (exam: string) => EXAM_TAGS[exam] ?? [];
+const TAG_VALUES = Object.entries(EXAM_TAGS)
+  .flatMap(([exam, tags]) => tags.map((t) => `('${t}', '${exam}')`))
+  .join(', ');
+
 const LETTERS: OptionId[] = ['A', 'B', 'C', 'D'];
 const ROMAN = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x'];
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -226,9 +241,11 @@ export class SupabaseQuestionBank implements QuestionBank {
 
   private async loadSyllabus(): Promise<Syllabus> {
     const { rows } = await this.pool.query<{ exam: string; subject: string; klass: string; chapter: string; topic: string; n: number }>(
-      `select upper(trim(e)) as exam, trim(subject) as subject, klass, trim(chapter) as chapter,
-              coalesce(nullif(trim(topic), ''), 'General') as topic, count(*)::int as n
-         from questions, unnest(exams) as e
+      `select m.exam, trim(subject) as subject, klass, trim(chapter) as chapter,
+              coalesce(nullif(trim(topic), ''), 'General') as topic, count(distinct questions.id)::int as n
+         from questions
+         join (values ${TAG_VALUES}) as m(tag, exam)
+           on m.tag = any(array(select upper(trim(x)) from unnest(exams) as x))
         where ${USABLE}
         group by 1, 2, 3, 4, 5`,
     );
@@ -304,11 +321,13 @@ export class SupabaseQuestionBank implements QuestionBank {
 
   // ---------------------------------------------------------------- questions
 
-  /** SQL conditions for a filter, with parameters starting at $2 ($1 is the exam code). */
+  /** SQL conditions for a filter, with parameters starting at $2 ($1 is the exam's tags). */
   private async where(filter: SampleFilter): Promise<{ sql: string; params: unknown[] } | null> {
     const s = await this.syllabus();
-    const params: unknown[] = [filter.examId];
-    const conds = [`$1 = any(array(select upper(trim(x)) from unnest(exams) as x))`, USABLE];
+    const tags = tagsOf(filter.examId);
+    if (!tags.length) return null;
+    const params: unknown[] = [tags];
+    const conds = [`array(select upper(trim(x)) from unnest(exams) as x) && $1::text[]`, USABLE];
     const p = (v: unknown) => {
       params.push(v);
       return `$${params.length}`;
@@ -358,7 +377,7 @@ export class SupabaseQuestionBank implements QuestionBank {
     const out: FullQuestion[] = [];
     for (const v of valid) {
       const row = byId.get(v.uuid);
-      if (!row || !(row.exams ?? []).some((e) => examCode(e) === v.exam)) continue;
+      if (!row || !(row.exams ?? []).some((e) => tagsOf(v.exam).includes(examCode(e)))) continue;
       const q = toFullQuestion(row, v.exam);
       if (q) out.push(q);
     }

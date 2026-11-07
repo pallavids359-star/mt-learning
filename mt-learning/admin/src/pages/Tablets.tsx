@@ -1,13 +1,32 @@
-import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
+﻿import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
-import type { Page, Student, Tablet, TabletStatus } from '../api/types';
+import type { DashboardSummary, Page, Student, Tablet, TabletStatus } from '../api/types';
 import { P, useAuth } from '../auth/AuthContext';
-import { Empty, ErrorNote, Field, Loading, Modal, PageHead, Pager, TabletPill, useConfirm, useToast } from '../components/ui';
+import { Empty, ErrorNote, Field, Loading, Modal, Pager, TabletPill, useConfirm, useToast } from '../components/ui';
 import { fmtAgo, TABLET_LABEL } from '../lib/format';
+import './AdminPages.css';
 
 type Dlg = { kind: 'enroll' } | { kind: 'edit'; t: Tablet } | { kind: 'assign'; t: Tablet } | { kind: 'status'; t: Tablet } | null;
+
+const DASH = '\u2014';
+const DAY = 86_400_000;
+const TONE: Record<TabletStatus, string> = { ASSIGNED: 'green', IN_STOCK: 'blue', UNDER_REPAIR: 'orange', LOST: 'red', RETIRED: 'grey' };
+const TABS: [TabletStatus | '', string][] = [
+  ['', 'All tablets'],
+  ['ASSIGNED', 'With students'],
+  ['IN_STOCK', 'In stock'],
+  ['UNDER_REPAIR', 'Under repair'],
+  ['LOST', 'Lost'],
+];
+
+/** Green: checked in today; amber: this week; red: longer ago or never. */
+function seenTone(t: Tablet) {
+  if (t.status !== 'ASSIGNED') return 'none';
+  const ago = t.lastSeenAt ? Date.now() - new Date(t.lastSeenAt).getTime() : Infinity;
+  return ago <= DAY ? 'on' : ago <= 7 * DAY ? 'low' : 'off';
+}
 
 export function TabletsPage() {
   const { can } = useAuth();
@@ -27,6 +46,10 @@ export function TabletsPage() {
     queryFn: () => api<Page<Tablet>>('/tablets', { query: { status, search: applied, page, pageSize: 50 } }),
     placeholderData: keepPreviousData,
   });
+  const summary = useQuery({ queryKey: ['dashboard'], queryFn: () => api<DashboardSummary>('/dashboard/summary'), enabled: can(P.DashboardView), staleTime: 60_000 });
+  const byStatus = summary.data?.tablets.byStatus;
+  const countOf = (s: TabletStatus | '') => (byStatus ? (s ? (byStatus[s] ?? 0) : summary.data!.tablets.total) : undefined);
+
   const done = (msg: string) => {
     void qc.invalidateQueries({ queryKey: ['tablets'] });
     void qc.invalidateQueries({ queryKey: ['students'] });
@@ -35,100 +58,141 @@ export function TabletsPage() {
     setDlg(null);
   };
 
+  async function unassign(t: Tablet) {
+    if (!(await confirm('Unassign this tablet?', <>{t.student?.fullName} will be signed out and the tablet returns to stock.</>, 'Unassign'))) return;
+    setError(null);
+    try {
+      await api(`/tablets/${t.id}/unassign`, { method: 'POST' });
+      done('Tablet unassigned');
+    } catch (e) {
+      setError(e);
+    }
+  }
+
   return (
-    <>
-      <PageHead
-        title="Tablets"
-        sub={q.data ? `${q.data.total} tablet${q.data.total === 1 ? '' : 's'}` : undefined}
-        actions={write && <button className="btn btn-primary" onClick={() => setDlg({ kind: 'enroll' })}>Enroll tablet</button>}
-      />
-      <p className="muted narrow-text">
-        This register tracks which college tablet each student uses. Locking tablets into the learning app is done through your MDM (Android Enterprise) in a later phase.
-      </p>
-      <form className="filters" onSubmit={(e) => { e.preventDefault(); setApplied(search.trim()); setPage(1); }}>
-        <input type="search" aria-label="Search tablets" placeholder="Serial, asset tag, model or student" value={search} onChange={(e) => setSearch(e.target.value)} onBlur={() => { setApplied(search.trim()); setPage(1); }} />
-        <select aria-label="Status" value={status} onChange={(e) => { setStatus(e.target.value as TabletStatus | ''); setPage(1); }}>
-          <option value="">Any status</option>
-          {Object.entries(TABLET_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-        </select>
-      </form>
-      <ErrorNote error={error} />
-      {q.isLoading ? (
-        <Loading />
-      ) : q.error ? (
-        <ErrorNote error={q.error} />
-      ) : !q.data!.items.length ? (
-        <Empty title={applied || status ? 'No tablets match' : 'No tablets enrolled yet'}>{write && !applied && !status && 'Enroll each tablet by its serial number before handing it to a student.'}</Empty>
-      ) : (
-        <div className="table-wrap">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Serial number</th>
-                <th>Model</th>
-                <th>Assigned to</th>
-                <th>Last seen</th>
-                <th>Status</th>
-                {write && <th className="num"><span className="sr-only">Actions</span></th>}
-              </tr>
-            </thead>
-            <tbody>
-              {q.data!.items.map((t) => (
-                <tr key={t.id}>
-                  <td>
-                    <span className="mono">{t.serialNumber}</span>
-                    {t.assetTag && <div className="muted small">Tag {t.assetTag}</div>}
-                  </td>
-                  <td>
-                    {t.model}
-                    {(t.androidVersion || t.appVersion) && (
-                      <div className="muted small">
-                        {t.androidVersion && `Android ${t.androidVersion}`}
-                        {t.androidVersion && t.appVersion && ', '}
-                        {t.appVersion && `app ${t.appVersion}`}
-                      </div>
-                    )}
-                  </td>
-                  <td>
-                    {t.student ? (
-                      <Link to={`/students/${t.student.id}`}>{t.student.fullName}</Link>
-                    ) : (
-                      <span className="muted">—</span>
-                    )}
-                  </td>
-                  <td>{t.status === 'ASSIGNED' ? fmtAgo(t.lastSeenAt) : <span className="muted">—</span>}</td>
-                  <td><TabletPill status={t.status} /></td>
-                  {write && (
-                    <td className="num nowrap">
-                      {t.status === 'IN_STOCK' && <button className="btn btn-quiet btn-sm" onClick={() => setDlg({ kind: 'assign', t })}>Assign</button>}
-                      {t.status === 'ASSIGNED' && (
-                        <button
-                          className="btn btn-quiet btn-sm"
-                          onClick={async () => {
-                            if (!(await confirm('Unassign this tablet?', <>{t.student?.fullName} will be signed out and the tablet returns to stock.</>, 'Unassign'))) return;
-                            setError(null);
-                            try {
-                              await api(`/tablets/${t.id}/unassign`, { method: 'POST' });
-                              done('Tablet unassigned');
-                            } catch (e) {
-                              setError(e);
-                            }
-                          }}
-                        >
-                          Unassign
-                        </button>
-                      )}
-                      {t.status !== 'RETIRED' && <button className="btn btn-quiet btn-sm" onClick={() => setDlg({ kind: 'status', t })}>Status</button>}
-                      <button className="btn btn-quiet btn-sm" onClick={() => setDlg({ kind: 'edit', t })}>Edit</button>
-                    </td>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+    <div className="pg">
+      <div className="pg-head">
+        <div>
+          <h1>Tablets</h1>
+          <p className="muted">Which college tablet each student uses, and when it last checked in</p>
         </div>
-      )}
-      {q.data && q.data.total > q.data.pageSize && <Pager page={page} pageSize={q.data.pageSize} total={q.data.total} onPage={setPage} />}
+        {write && (
+          <button className="btn btn-primary" onClick={() => setDlg({ kind: 'enroll' })}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            Enroll tablet
+          </button>
+        )}
+      </div>
+
+      <div className="pg-tabs" role="group" aria-label="Show">
+        {TABS.map(([s, label]) => {
+          const n = countOf(s);
+          return (
+            <button key={s || 'all'} type="button" aria-pressed={status === s} onClick={() => { setStatus(s); setPage(1); }}>
+              <span>{label}</span>
+              <b>{n === undefined ? DASH : n.toLocaleString('en-IN')}</b>
+            </button>
+          );
+        })}
+      </div>
+
+      <ErrorNote error={error} />
+
+      <section className="pg-card">
+        <form className="pg-filters" onSubmit={(e) => { e.preventDefault(); setApplied(search.trim()); setPage(1); }}>
+          <label className="pg-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="7" />
+              <path d="M20 20l-3.5-3.5" />
+            </svg>
+            <input type="search" aria-label="Search tablets" placeholder="Serial, asset tag, model or student" value={search} onChange={(e) => setSearch(e.target.value)} onBlur={() => { setApplied(search.trim()); setPage(1); }} />
+          </label>
+          <label className="pg-select">
+            Status
+            <select value={status} onChange={(e) => { setStatus(e.target.value as TabletStatus | ''); setPage(1); }}>
+              <option value="">Any</option>
+              {Object.entries(TABLET_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+          </label>
+        </form>
+
+        {q.isLoading ? (
+          <Loading />
+        ) : q.error ? (
+          <div className="pg-pad"><ErrorNote error={q.error} /></div>
+        ) : !q.data!.items.length ? (
+          <div className="pg-pad">
+            <Empty title={applied || status ? 'No tablets match' : 'No tablets enrolled yet'}>{write && !applied && !status && 'Enroll each tablet by its serial number before handing it to a student.'}</Empty>
+          </div>
+        ) : (
+          <div className="pg-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>Tablet</th>
+                  <th>Model</th>
+                  <th>Student</th>
+                  <th>Last check-in</th>
+                  <th>Status</th>
+                  {write && <th className="num"><span className="sr-only">Actions</span></th>}
+                </tr>
+              </thead>
+              <tbody>
+                {q.data!.items.map((t) => (
+                  <tr key={t.id}>
+                    <td>
+                      <div className="pg-person">
+                        <span className={`pg-avatar sq ${t.status === 'ASSIGNED' ? 'navy' : 'grey'}`} aria-hidden="true">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="5" y="2.5" width="14" height="19" rx="2.5" /><path d="M11 18.5h2" /></svg>
+                        </span>
+                        <span>
+                          <span className="pg-strong pg-mono">{t.serialNumber}</span>
+                          {t.assetTag && <span className="pg-sub">Tag {t.assetTag}</span>}
+                        </span>
+                      </div>
+                    </td>
+                    <td>
+                      {t.model}
+                      {(t.androidVersion || t.appVersion) && (
+                        <div className="pg-sub">
+                          {t.androidVersion && `Android ${t.androidVersion}`}
+                          {t.androidVersion && t.appVersion && ', '}
+                          {t.appVersion && `app ${t.appVersion}`}
+                        </div>
+                      )}
+                    </td>
+                    <td>{t.student ? <Link className="pg-strong" to={`/students/${t.student.id}`}>{t.student.fullName}</Link> : <span className="muted">{DASH}</span>}</td>
+                    <td>
+                      {t.status === 'ASSIGNED' ? (
+                        <span className={`pg-dot ${seenTone(t)}`}><i aria-hidden="true" />{t.lastSeenAt ? fmtAgo(t.lastSeenAt) : 'Never'}</span>
+                      ) : (
+                        <span className="muted">{DASH}</span>
+                      )}
+                    </td>
+                    <td><span className={`pg-pill ${TONE[t.status]}`}>{TABLET_LABEL[t.status]}</span></td>
+                    {write && (
+                      <td className="actions">
+                        {t.status === 'IN_STOCK' && <button className="btn btn-primary btn-sm" onClick={() => setDlg({ kind: 'assign', t })}>Assign</button>}
+                        {t.status === 'ASSIGNED' && <button className="btn btn-quiet btn-sm" onClick={() => void unassign(t)}>Unassign</button>}
+                        {t.status !== 'RETIRED' && <button className="btn btn-quiet btn-sm" onClick={() => setDlg({ kind: 'status', t })}>Status</button>}
+                        <button className="btn btn-quiet btn-sm" onClick={() => setDlg({ kind: 'edit', t })}>Edit</button>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {q.data && q.data.total > 0 && (
+          <div className="pg-foot">
+            <span>{q.data.total.toLocaleString('en-IN')} tablet{q.data.total === 1 ? '' : 's'}</span>
+            {q.data.total > q.data.pageSize && <Pager page={page} pageSize={q.data.pageSize} total={q.data.total} onPage={setPage} />}
+          </div>
+        )}
+      </section>
 
       <Modal open={dlg?.kind === 'enroll' || dlg?.kind === 'edit'} title={dlg?.kind === 'edit' ? 'Edit tablet' : 'Enroll tablet'} onClose={() => setDlg(null)}>
         {(dlg?.kind === 'enroll' || dlg?.kind === 'edit') && (
@@ -142,7 +206,7 @@ export function TabletsPage() {
         {dlg?.kind === 'status' && <StatusForm t={dlg.t} onDone={() => done('Tablet status changed')} onCancel={() => setDlg(null)} />}
       </Modal>
       {dialog}
-    </>
+    </div>
   );
 }
 
@@ -168,7 +232,7 @@ function TabletForm({ t, onDone, onCancel }: { t: Tablet | null; onDone: () => v
   }
   return (
     <form onSubmit={submit} className="stack">
-      <Field label="Serial number" hint={t ? 'Serial numbers cannot be changed' : 'Settings → About tablet → Status'}>
+      <Field label="Serial number" hint={t ? 'Serial numbers cannot be changed' : 'Settings -> About tablet -> Status'}>
         <input required className="mono" value={f.serialNumber} disabled={!!t} onChange={upd('serialNumber')} autoFocus={!t} />
       </Field>
       <div className="grid-form">
@@ -180,7 +244,7 @@ function TabletForm({ t, onDone, onCancel }: { t: Tablet | null; onDone: () => v
       <ErrorNote error={error} />
       <div className="form-actions">
         <button type="button" className="btn btn-quiet" onClick={onCancel}>Cancel</button>
-        <button className="btn btn-primary" disabled={busy}>{busy ? 'Saving…' : t ? 'Save tablet' : 'Enroll tablet'}</button>
+        <button className="btn btn-primary" disabled={busy}>{busy ? 'Saving...' : t ? 'Save tablet' : 'Enroll tablet'}</button>
       </div>
     </form>
   );
@@ -223,7 +287,7 @@ function AssignForm({ t, onDone, onCancel }: { t: Tablet; onDone: () => void; on
             <li key={s.id}>
               <button type="button" role="option" aria-selected={picked?.id === s.id} className="pick" onClick={() => setPicked(s)}>
                 <strong>{s.fullName}</strong>
-                <span className="muted small"><span className="mono">{s.studentCode}</span> · {s.classGroup.name}, {s.section.name}</span>
+                <span className="muted small"><span className="mono">{s.studentCode}</span> - {s.classGroup.name}, {s.section.name}</span>
               </button>
             </li>
           ))}
@@ -232,7 +296,7 @@ function AssignForm({ t, onDone, onCancel }: { t: Tablet; onDone: () => void; on
       <ErrorNote error={error} />
       <div className="form-actions">
         <button type="button" className="btn btn-quiet" onClick={onCancel}>Cancel</button>
-        <button className="btn btn-primary" disabled={!picked || busy}>{busy ? 'Assigning…' : picked ? `Assign to ${picked.fullName}` : 'Assign'}</button>
+        <button className="btn btn-primary" disabled={!picked || busy}>{busy ? 'Assigning...' : picked ? `Assign to ${picked.fullName}` : 'Assign'}</button>
       </div>
     </form>
   );
@@ -283,7 +347,7 @@ function StatusForm({ t, onDone, onCancel }: { t: Tablet; onDone: () => void; on
       <ErrorNote error={error} />
       <div className="form-actions">
         <button type="button" className="btn btn-quiet" onClick={onCancel}>Cancel</button>
-        <button className={`btn ${status === 'RETIRED' || status === 'LOST' ? 'btn-danger' : 'btn-primary'}`} disabled={busy}>{busy ? 'Saving…' : `Mark ${TABLET_LABEL[status].toLowerCase()}`}</button>
+        <button className={`btn ${status === 'RETIRED' || status === 'LOST' ? 'btn-danger' : 'btn-primary'}`} disabled={busy}>{busy ? 'Saving...' : `Mark ${TABLET_LABEL[status].toLowerCase()}`}</button>
       </div>
     </form>
   );

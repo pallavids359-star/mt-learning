@@ -1,12 +1,25 @@
-import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
+﻿import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { api } from '../api/client';
-import type { AccountStatus, Page, Staff, StaffRole } from '../api/types';
+import type { AccountStatus, DashboardSummary, Page, Staff, StaffRole } from '../api/types';
 import { P, useAuth } from '../auth/AuthContext';
-import { CredentialSlip, Empty, ErrorNote, Field, Loading, Modal, PageHead, Pager, StatusPill, useConfirm, useToast } from '../components/ui';
+import { CredentialSlip, Empty, ErrorNote, Field, Loading, Modal, Pager, StatusPill, useConfirm, useToast } from '../components/ui';
 import { fmtAgo, ROLE_LABEL } from '../lib/format';
+import './AdminPages.css';
 
 const ROLES = Object.keys(ROLE_LABEL) as StaffRole[];
+const DASH = '\u2014';
+const AVATAR = ['navy', 'blue', 'gold', 'plum'];
+const ROLE_TONE = (r: StaffRole) => (r === 'SUPER_ADMIN' ? 'gold' : r.includes('ADMIN') ? 'navy' : 'blue');
+
+const initials = (name: string) =>
+  name
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => w[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
 
 export function StaffPage() {
   const { can, me } = useAuth();
@@ -26,6 +39,14 @@ export function StaffPage() {
     queryFn: () => api<Page<Staff>>('/staff', { query: { role, page, pageSize: 50 } }),
     placeholderData: keepPreviousData,
   });
+  const summary = useQuery({ queryKey: ['dashboard'], queryFn: () => api<DashboardSummary>('/dashboard/summary'), enabled: can(P.DashboardView), staleTime: 60_000 });
+  const byRole = summary.data?.staffByRole;
+  const total = byRole ? Object.values(byRole).reduce((a, b) => a + (b ?? 0), 0) : undefined;
+  // One card per role that has people, plus "All staff".
+  const tabs: [StaffRole | '', string, number | undefined][] = [
+    ['', 'All staff', total],
+    ...ROLES.filter((r) => !byRole || (byRole[r] ?? 0) > 0 || r === role).map((r) => [r, ROLE_LABEL[r], byRole?.[r] ?? (byRole ? 0 : undefined)] as [StaffRole, string, number | undefined]),
+  ];
   const refresh = () => void qc.invalidateQueries({ queryKey: ['staff'] });
 
   async function changeStatus(s: Staff, status: AccountStatus) {
@@ -54,66 +75,100 @@ export function StaffPage() {
   }
 
   return (
-    <>
-      <PageHead title="Staff accounts" actions={write && <button className="btn btn-primary" onClick={() => setEditing('new')}>Add staff member</button>} />
-      <div className="filters">
-        <select aria-label="Role" value={role} onChange={(e) => { setRole(e.target.value as StaffRole | ''); setPage(1); }}>
-          <option value="">All roles</option>
-          {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
-        </select>
-      </div>
-      <ErrorNote error={error} />
-      {q.isLoading ? (
-        <Loading />
-      ) : q.error ? (
-        <ErrorNote error={q.error} />
-      ) : !q.data!.items.length ? (
-        <Empty title="No staff accounts match" />
-      ) : (
-        <div className="table-wrap">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Role</th>
-                <th>Last sign-in</th>
-                <th>Status</th>
-                {write && <th className="num"><span className="sr-only">Actions</span></th>}
-              </tr>
-            </thead>
-            <tbody>
-              {q.data!.items.map((s) => (
-                <tr key={s.id}>
-                  <td>
-                    <strong>{s.fullName}</strong>
-                    {s.id === me?.id && <span className="muted"> (you)</span>}
-                    <div className="muted small">{s.email}</div>
-                  </td>
-                  <td>{ROLE_LABEL[s.role]}</td>
-                  <td>{s.mustChangePassword && !s.lastLoginAt ? <span className="muted">Not yet</span> : fmtAgo(s.lastLoginAt)}</td>
-                  <td><StatusPill status={s.status} /></td>
-                  {write && (
-                    <td className="num nowrap">
-                      {manageable(s.role) && s.id !== me?.id && (
-                        <>
-                          <button className="btn btn-quiet btn-sm" onClick={() => setEditing(s)}>Edit</button>
-                          <button className="btn btn-quiet btn-sm" onClick={() => void reset(s)}>Reset password</button>
-                          {s.status === 'ACTIVE' ? (
-                            <button className="btn btn-quiet btn-sm danger-text" onClick={() => void changeStatus(s, 'SUSPENDED')}>Suspend</button>
-                          ) : (
-                            <button className="btn btn-quiet btn-sm" onClick={() => void changeStatus(s, 'ACTIVE')}>Reactivate</button>
-                          )}
-                        </>
-                      )}
-                    </td>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+    <div className="pg">
+      <div className="pg-head">
+        <div>
+          <h1>Staff</h1>
+          <p className="muted">Who can sign in to this portal, and what each person can do</p>
         </div>
-      )}
-      {q.data && q.data.total > q.data.pageSize && <Pager page={page} pageSize={q.data.pageSize} total={q.data.total} onPage={setPage} />}
+        {write && (
+          <button className="btn btn-primary" onClick={() => setEditing('new')}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            Add staff member
+          </button>
+        )}
+      </div>
+
+      <div className="pg-tabs" role="group" aria-label="Role">
+        {tabs.map(([r, label, n]) => (
+          <button key={r || 'all'} type="button" aria-pressed={role === r} onClick={() => { setRole(r); setPage(1); }}>
+            <span>{label}</span>
+            <b>{n === undefined ? DASH : n.toLocaleString('en-IN')}</b>
+          </button>
+        ))}
+      </div>
+
+      <ErrorNote error={error} />
+
+      <section className="pg-card">
+        {q.isLoading ? (
+          <Loading />
+        ) : q.error ? (
+          <div className="pg-pad"><ErrorNote error={q.error} /></div>
+        ) : !q.data!.items.length ? (
+          <div className="pg-pad"><Empty title="No staff accounts match" /></div>
+        ) : (
+          <div className="pg-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Role</th>
+                  <th>Phone</th>
+                  <th>Last sign-in</th>
+                  <th>Status</th>
+                  {write && <th className="num"><span className="sr-only">Actions</span></th>}
+                </tr>
+              </thead>
+              <tbody>
+                {q.data!.items.map((s, i) => (
+                  <tr key={s.id}>
+                    <td>
+                      <div className="pg-person">
+                        <span className={`pg-avatar ${AVATAR[i % AVATAR.length]}`} aria-hidden="true">{initials(s.fullName)}</span>
+                        <span>
+                          <span className="pg-strong">
+                            {s.fullName}
+                            {s.id === me?.id && <span className="pg-you">You</span>}
+                          </span>
+                          <span className="pg-sub">{s.email}</span>
+                        </span>
+                      </div>
+                    </td>
+                    <td><span className={`pg-pill ${ROLE_TONE(s.role)}`}>{ROLE_LABEL[s.role]}</span></td>
+                    <td>{s.phone || <span className="muted">{DASH}</span>}</td>
+                    <td>{s.mustChangePassword && !s.lastLoginAt ? <span className="muted">Not yet</span> : fmtAgo(s.lastLoginAt)}</td>
+                    <td><StatusPill status={s.status} /></td>
+                    {write && (
+                      <td className="actions">
+                        {manageable(s.role) && s.id !== me?.id && (
+                          <>
+                            <button className="btn btn-quiet btn-sm" onClick={() => setEditing(s)}>Edit</button>
+                            <button className="btn btn-quiet btn-sm" onClick={() => void reset(s)}>Reset password</button>
+                            {s.status === 'ACTIVE' ? (
+                              <button className="btn btn-quiet btn-sm danger-text" onClick={() => void changeStatus(s, 'SUSPENDED')}>Suspend</button>
+                            ) : (
+                              <button className="btn btn-quiet btn-sm" onClick={() => void changeStatus(s, 'ACTIVE')}>Reactivate</button>
+                            )}
+                          </>
+                        )}
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {q.data && q.data.total > 0 && (
+          <div className="pg-foot">
+            <span>{q.data.total} staff account{q.data.total === 1 ? '' : 's'}</span>
+            {q.data.total > q.data.pageSize && <Pager page={page} pageSize={q.data.pageSize} total={q.data.total} onPage={setPage} />}
+          </div>
+        )}
+      </section>
 
       <Modal open={!!editing} title={editing === 'new' ? 'Add staff member' : 'Edit staff member'} onClose={() => setEditing(null)}>
         {editing && (
@@ -135,7 +190,7 @@ export function StaffPage() {
         )}
       </Modal>
       {dialog}
-    </>
+    </div>
   );
 }
 
@@ -188,7 +243,7 @@ function StaffForm({
       <ErrorNote error={error} />
       <div className="form-actions">
         <button type="button" className="btn btn-quiet" onClick={onCancel}>Cancel</button>
-        <button className="btn btn-primary" disabled={busy}>{busy ? 'Saving…' : staff ? 'Save changes' : 'Add staff member'}</button>
+        <button className="btn btn-primary" disabled={busy}>{busy ? 'Saving...' : staff ? 'Save changes' : 'Add staff member'}</button>
       </div>
     </form>
   );

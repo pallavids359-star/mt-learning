@@ -7,6 +7,7 @@ import '../../core/widgets.dart';
 import '../../data/api_client.dart';
 import '../../data/prep_models.dart';
 import '../results/results_page.dart';
+import '../shell/app_shell.dart';
 import 'exam_choice.dart';
 import 'prep_home_page.dart';
 

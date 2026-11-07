@@ -1,0 +1,56 @@
+﻿/* Live tests page, Navy & Gold design. */
+
+.lt { display: grid; gap: 20px; }
+.lt-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+.lt-head h1 { font-size: 30px; font-weight: 700; letter-spacing: -0.01em; }
+.lt-head p { margin-top: 4px; }
+.lt .btn svg { width: 16px; height: 16px; }
+
+.lt-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.lt-tabs { display: flex; gap: 4px; padding: 4px; border-radius: 12px; background: #e5e6eb; flex-wrap: wrap; }
+.lt-tabs button { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 9px; border: 0; background: transparent; color: #495164; font-weight: 600; cursor: pointer; }
+.lt-tabs button span { font-size: 12px; padding: 1px 8px; border-radius: 999px; background: #d9dce3; color: #3c4457; }
+.lt-tabs button[aria-pressed='true'] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgb(15 27 46 / 12%); }
+.lt-tabs button[aria-pressed='true'] span { background: #e7ecf4; color: var(--navy); }
+.lt-class { display: flex; align-items: center; gap: 8px; color: var(--ink-2); font-size: 13.5px; }
+.lt-class select { width: auto; min-width: 180px; color: var(--ink); }
+
+.lt-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 16px; }
+.lt-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); padding: 20px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.lt-card.live { border: 2px solid #e5484d; padding: 19px; }
+.lt-card-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.lt-who { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-2); min-width: 0; }
+.lt-state { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700; white-space: nowrap; }
+.lt-state i { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.lt-state.open { color: #c9262c; }
+.lt-state.upcoming { color: #1e40af; }
+.lt-state.draft { color: var(--ink-2); }
+.lt-state.closed { color: var(--navy); }
+.lt-title { display: grid; gap: 4px; }
+.lt-title h2 { font-size: 18px; font-weight: 700; }
+.lt-title h2 a { color: var(--ink); text-decoration: none; }
+.lt-title h2 a:hover { text-decoration: underline; }
+.lt-title span { font-size: 13.5px; color: var(--ink-2); }
+.lt-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding: 12px; border-radius: 12px; background: var(--sunk); }
+.lt-stats div { display: grid; gap: 2px; }
+.lt-stats span { font-size: 12px; color: var(--ink-2); }
+.lt-stats b { font-weight: 700; }
+.lt-progress { display: grid; gap: 6px; }
+.lt-meter { height: 6px; border-radius: 3px; background: #ecedf1; overflow: hidden; }
+.lt-meter i { display: block; height: 100%; border-radius: 3px; }
+.lt-meter i.red { background: #e5484d; }
+.lt-meter i.grey { background: #a3a9b5; }
+.lt-meter i.navy { background: var(--navy); }
+.lt-progress span { font-size: 12.5px; color: var(--ink-2); }
+.lt-review { font-size: 12.5px; font-weight: 600; color: var(--warn); }
+
+.lt-actions { display: flex; gap: 8px; margin-top: auto; }
+.lt-actions > .btn { flex: 1; }
+.lt-more { position: relative; }
+.lt-more summary { list-style: none; width: 42px; height: 42px; border-radius: 10px; border: 1px solid var(--line-strong); display: grid; place-items: center; color: #3c4457; cursor: pointer; background: var(--surface); }
+.lt-more summary::-webkit-details-marker { display: none; }
+.lt-more summary:hover { background: var(--sunk); }
+.lt-more summary svg { width: 16px; height: 16px; }
+.lt-menu { position: absolute; right: 0; bottom: calc(100% + 6px); z-index: 5; min-width: 170px; padding: 6px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); box-shadow: 0 10px 30px rgb(15 27 46 / 14%); display: grid; }
+.lt-menu a { padding: 9px 12px; border-radius: 8px; color: var(--ink); text-decoration: none; font-weight: 500; }
+.lt-menu a:hover { background: var(--sunk); }

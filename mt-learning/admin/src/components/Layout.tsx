@@ -1,6 +1,6 @@
 import { useIsFetching, useIsMutating, useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import type { DashboardSummary } from '../api/types';
 import { P, useAuth } from '../auth/AuthContext';
@@ -33,6 +33,8 @@ export function Layout() {
   const { me, can, logout } = useAuth();
   const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const navigate = useNavigate();
   const busy = useIsFetching() + useIsMutating() > 0;
 
   const summary = useQuery({
@@ -67,7 +69,7 @@ export function Layout() {
           <span className="side-logo">MT</span>
           <span>
             <strong>MT Learning</strong>
-            <em>College admin</em>
+            <em>Manchester Technologies</em>
           </span>
         </NavLink>
 
@@ -90,18 +92,12 @@ export function Layout() {
           })}
         </nav>
 
-        <div className="side-user">
-          <span className="side-avatar">{initials}</span>
-          <NavLink to="/account" className="side-user-name">
-            <strong>{me?.fullName}</strong>
-            <span>{me && ROLE_LABEL[me.role]}</span>
-          </NavLink>
-          <button className="side-out" onClick={() => void logout()} aria-label="Sign out" title="Sign out">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" aria-hidden="true">
-              <path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h11" />
-            </svg>
-          </button>
-        </div>
+        {summary.data?.academicYear && (
+          <div className="side-year">
+            <span>Academic year</span>
+            <strong>{summary.data.academicYear.name}</strong>
+          </div>
+        )}
       </aside>
 
       <header className="mobile-bar">
@@ -114,9 +110,49 @@ export function Layout() {
       </header>
       {open && <button className="scrim" aria-label="Close menu" onClick={() => setOpen(false)} />}
 
-      <main id="main" className="main" tabIndex={-1}>
-        <Outlet />
-      </main>
+      <div className="shell">
+        <header className="topbar">
+          {can(P.StudentsRead) && (
+            <form
+              className="topbar-search"
+              role="search"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const q = query.trim();
+                navigate(q ? `/students?search=${encodeURIComponent(q)}` : '/students');
+              }}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                <circle cx="11" cy="11" r="7" />
+                <path d="M20 20l-3.5-3.5" />
+              </svg>
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search students by name or ID"
+                aria-label="Search students"
+              />
+            </form>
+          )}
+          <span className="topbar-space" />
+          <NavLink to="/account" className="topbar-user">
+            <span className="side-avatar">{initials}</span>
+            <span>
+              <strong>{me?.fullName}</strong>
+              <span>{me && ROLE_LABEL[me.role]}</span>
+            </span>
+          </NavLink>
+          <button className="topbar-out" onClick={() => void logout()} aria-label="Sign out" title="Sign out">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" aria-hidden="true">
+              <path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h11" />
+            </svg>
+          </button>
+        </header>
+        <main id="main" className="main" tabIndex={-1}>
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }

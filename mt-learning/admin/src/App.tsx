@@ -20,7 +20,8 @@ import { MaterialsPage } from './pages/Materials';
 import { NoticesPage } from './pages/Notices';
 import { TestEditorPage } from './pages/TestEditor';
 import { TestMonitorPage } from './pages/TestMonitor';
-import { ResultsPage, TestResultsPage } from './pages/TestResults';
+import { TestResultsPage } from './pages/TestResults';
+import { ResultsPage } from './pages/Results';
 import { TestsPage } from './pages/Tests';
 
 function Guard({ perm, children }: { perm: string; children: ReactNode }) {

@@ -1,11 +1,44 @@
-import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
+﻿import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { sectionOptions, useClasses, useHostels } from '../api/hooks';
 import type { Gender, Page, Student } from '../api/types';
 import { P, useAuth } from '../auth/AuthContext';
-import { CredentialSlip, Empty, ErrorNote, Field, Loading, Modal, PageHead, Pager, StatusPill } from '../components/ui';
+import { CredentialSlip, Empty, ErrorNote, Field, Loading, Modal, Pager, StatusPill } from '../components/ui';
+import { fmtAgo } from '../lib/format';
+import './Students.css';
+
+type ListedStudent = Student & { averagePercent: number | null };
+type StudentList = Page<ListedStudent> & { counts: { all: number; hostel: number; day: number; noTablet: number } };
+type Tab = 'all' | 'hostel' | 'day' | 'noTablet';
+
+const DOT = ' \u00b7 ';
+const DASH = '\u2014';
+const DAY = 86_400_000;
+const AVATAR = ['navy', 'blue', 'gold', 'plum'];
+
+const initials = (name: string) =>
+  name
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => w[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+
+/** The later of the last sign-in and the tablet's last check-in. */
+function lastActive(s: Student) {
+  const times = [s.lastLoginAt, s.tablet?.lastSeenAt].filter((x): x is string => !!x).map((x) => new Date(x).getTime());
+  return times.length ? new Date(Math.max(...times)).toISOString() : null;
+}
+
+/** Green: seen in the last day; amber: this week; red: longer; grey: no tablet. */
+function tabletTone(s: Student) {
+  if (!s.tablet) return 'none';
+  const seen = s.tablet.lastSeenAt ? Date.now() - new Date(s.tablet.lastSeenAt).getTime() : Infinity;
+  return seen <= DAY ? 'on' : seen <= 7 * DAY ? 'low' : 'off';
+}
 
 export function StudentsPage() {
   const { can } = useAuth();
@@ -36,157 +69,234 @@ export function StudentsPage() {
     setParams(next, { replace: true });
   };
 
+  const tab: Tab = filters.hasTablet === 'false' ? 'noTablet' : filters.residence === 'hostel' ? 'hostel' : filters.residence === 'day' ? 'day' : 'all';
+  const pickTab = (t: Tab) => {
+    const next = new URLSearchParams(params);
+    for (const k of ['page', 'residence', 'hostelId', 'hasTablet']) next.delete(k);
+    if (t === 'hostel' || t === 'day') next.set('residence', t);
+    if (t === 'noTablet') next.set('hasTablet', 'false');
+    setParams(next, { replace: true });
+  };
+
   const q = useQuery({
     queryKey: ['students', filters, page],
-    queryFn: () => api<Page<Student>>('/students', { query: { ...filters, page, pageSize: 50 } }),
+    queryFn: () => api<StudentList>('/students', { query: { ...filters, page, pageSize: 50 } }),
     placeholderData: keepPreviousData,
   });
   const selectedClass = classes.data?.find((c) => c.id === filters.classId);
+  const counts = q.data?.counts;
+  const tabs: [Tab, string, number | undefined][] = [
+    ['all', 'All students', counts?.all],
+    ['hostel', 'Hostel', counts?.hostel],
+    ['day', 'Day scholars', counts?.day],
+    ['noTablet', 'No tablet yet', counts?.noTablet],
+  ];
+  const from = q.data ? (q.data.total === 0 ? 0 : (page - 1) * q.data.pageSize + 1) : 0;
+  const to = q.data ? Math.min(page * q.data.pageSize, q.data.total) : 0;
 
   return (
-    <>
-      <PageHead
-        title="Students"
-        sub={q.data ? `${q.data.total} student${q.data.total === 1 ? '' : 's'}` : undefined}
-        actions={
-          can(P.StudentsCredentials) && (
-            <>
-              <Link to="/students/import" className="btn btn-quiet">
-                Import from CSV
-              </Link>
-              <button className="btn btn-primary" onClick={() => setAdding(true)}>
-                Add student
-              </button>
-            </>
-          )
-        }
-      />
+    <div className="stu">
+      <div className="stu-head">
+        <div>
+          <h1>Students</h1>
+          <p className="muted">Everyone enrolled this year, with their tablet and scores</p>
+        </div>
+        {can(P.StudentsCredentials) && (
+          <div className="stu-actions">
+            <Link to="/students/import" className="btn btn-quiet">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                <path d="M12 15V4M7 9l5-5 5 5M4 20h16" />
+              </svg>
+              Import from Excel
+            </Link>
+            <button className="btn btn-primary" onClick={() => setAdding(true)}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+              Add student
+            </button>
+          </div>
+        )}
+      </div>
 
-      <form
-        className="filters"
-        onSubmit={(e) => {
-          e.preventDefault();
-          set('search', search.trim());
-        }}
-      >
-        <input
-          type="search"
-          placeholder="Search name, student ID or roll no."
-          aria-label="Search students"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          onBlur={() => search.trim() !== filters.search && set('search', search.trim())}
-        />
-        <select aria-label="Class" value={filters.classId} onChange={(e) => set('classId', e.target.value)}>
-          <option value="">All classes</option>
-          {classes.data?.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-        <select aria-label="Section" value={filters.sectionId} onChange={(e) => set('sectionId', e.target.value)}>
-          <option value="">All sections</option>
-          {selectedClass
-            ? selectedClass.sections.map((s) => (
-                <option key={s.id} value={s.id}>
-                  Section {s.name}
-                </option>
-              ))
-            : sectionOptions(classes.data).map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.label}
-                </option>
-              ))}
-        </select>
-        <select
-          aria-label="Hostel or day scholar"
-          value={filters.hostelId ? `h:${filters.hostelId}` : filters.residence}
-          onChange={(e) => {
-            const v = e.target.value;
-            const next = new URLSearchParams(params);
-            next.delete('page');
-            next.delete('hostelId');
-            next.delete('residence');
-            if (v.startsWith('h:')) next.set('hostelId', v.slice(2));
-            else if (v) next.set('residence', v);
-            setParams(next, { replace: true });
+      <div className="stu-tabs" role="group" aria-label="Show">
+        {tabs.map(([id, label, n]) => (
+          <button key={id} type="button" aria-pressed={tab === id} onClick={() => pickTab(id)}>
+            <span>{label}</span>
+            <b>{n === undefined ? DASH : n.toLocaleString('en-IN')}</b>
+          </button>
+        ))}
+      </div>
+
+      <section className="stu-card">
+        <form
+          className="stu-filters"
+          onSubmit={(e) => {
+            e.preventDefault();
+            set('search', search.trim());
           }}
         >
-          <option value="">Hostel and day scholars</option>
-          <option value="hostel">Hostel students</option>
-          <option value="day">Day scholars (non-hostel)</option>
-        </select>
-        <select aria-label="Boys or girls" value={filters.gender} onChange={(e) => set('gender', e.target.value)}>
-          <option value="">Boys and girls</option>
-          <option value="MALE">Boys</option>
-          <option value="FEMALE">Girls</option>
-        </select>
-        <select aria-label="Status" value={filters.status} onChange={(e) => set('status', e.target.value)}>
-          <option value="">Any status</option>
-          <option value="ACTIVE">Active</option>
-          <option value="SUSPENDED">Suspended</option>
-          <option value="DEACTIVATED">Deactivated</option>
-        </select>
-        <select aria-label="Tablet" value={filters.hasTablet} onChange={(e) => set('hasTablet', e.target.value)}>
-          <option value="">With or without tablet</option>
-          <option value="true">Has a tablet</option>
-          <option value="false">No tablet</option>
-        </select>
-      </form>
-
-      {q.isLoading ? (
-        <Loading />
-      ) : q.error ? (
-        <ErrorNote error={q.error} />
-      ) : q.data!.items.length === 0 ? (
-        <Empty title="No students match these filters">
-          {Object.values(filters).some(Boolean) ? 'Clear a filter to see more.' : 'Add students one at a time or import a class list.'}
-        </Empty>
-      ) : (
-        <div className="table-wrap">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Student</th>
-                <th>Class</th>
-                <th className="num">Roll</th>
-                <th>Hostel</th>
-                <th>Tablet</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {q.data!.items.map((s) => (
-                <tr key={s.id}>
-                  <td>
-                    <Link to={`/students/${s.id}`} className="strong-link">
-                      {s.fullName}
-                    </Link>
-                    <div className="mono small muted">{s.studentCode}</div>
-                  </td>
-                  <td>
-                    {s.classGroup.name}
-                    <span className="muted"> · {s.section.name}</span>
-                  </td>
-                  <td className="num">{s.rollNumber}</td>
-                  <td>{s.hostel ? `${s.hostel.name}${s.roomNumber ? `, room ${s.roomNumber}` : ''}` : <span className="muted">Day scholar</span>}</td>
-                  <td className="mono small">{s.tablet?.serialNumber ?? <span className="muted">None</span>}</td>
-                  <td>
-                    <StatusPill status={s.status} />
-                  </td>
-                </tr>
+          <label className="stu-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="7" />
+              <path d="M20 20l-3.5-3.5" />
+            </svg>
+            <input
+              type="search"
+              placeholder="Search name or ID"
+              aria-label="Search students"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onBlur={() => search.trim() !== filters.search && set('search', search.trim())}
+            />
+          </label>
+          <label className="stu-select">
+            Class
+            <select value={filters.classId} onChange={(e) => set('classId', e.target.value)}>
+              <option value="">All classes</option>
+              {classes.data?.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
               ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-      {q.data && q.data.total > q.data.pageSize && <Pager page={page} pageSize={q.data.pageSize} total={q.data.total} onPage={(p) => set('page', String(p))} />}
+            </select>
+          </label>
+          <label className="stu-select">
+            Section
+            <select value={filters.sectionId} onChange={(e) => set('sectionId', e.target.value)}>
+              <option value="">All</option>
+              {selectedClass
+                ? selectedClass.sections.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))
+                : sectionOptions(classes.data).map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.label}
+                    </option>
+                  ))}
+            </select>
+          </label>
+          <label className="stu-select">
+            Gender
+            <select value={filters.gender} onChange={(e) => set('gender', e.target.value)}>
+              <option value="">Everyone</option>
+              <option value="MALE">Boys</option>
+              <option value="FEMALE">Girls</option>
+            </select>
+          </label>
+          <label className="stu-select">
+            Status
+            <select value={filters.status} onChange={(e) => set('status', e.target.value)}>
+              <option value="">Any</option>
+              <option value="ACTIVE">Active</option>
+              <option value="SUSPENDED">Suspended</option>
+              <option value="DEACTIVATED">Deactivated</option>
+            </select>
+          </label>
+        </form>
+
+        {q.isLoading ? (
+          <Loading />
+        ) : q.error ? (
+          <div className="stu-pad">
+            <ErrorNote error={q.error} />
+          </div>
+        ) : q.data!.items.length === 0 ? (
+          <div className="stu-pad">
+            <Empty title="No students match these filters">
+              {Object.values(filters).some(Boolean) ? 'Clear a filter to see more.' : 'Add students one at a time or import a class list.'}
+            </Empty>
+          </div>
+        ) : (
+          <div className="stu-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>Student</th>
+                  <th>Class</th>
+                  <th>Stays</th>
+                  <th>Tablet</th>
+                  <th>Last active</th>
+                  <th className="stu-score-col">Average score</th>
+                  <th>Status</th>
+                  <th>
+                    <span className="sr-only">Open</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {q.data!.items.map((s, i) => {
+                  const seen = lastActive(s);
+                  const avg = s.averagePercent;
+                  return (
+                    <tr key={s.id}>
+                      <td>
+                        <div className="stu-person">
+                          <span className={`stu-avatar ${AVATAR[i % AVATAR.length]}`} aria-hidden="true">
+                            {initials(s.fullName)}
+                          </span>
+                          <span>
+                            <Link to={`/students/${s.id}`} className="stu-name">
+                              {s.fullName}
+                            </Link>
+                            <span className="stu-code">{s.studentCode}</span>
+                          </span>
+                        </div>
+                      </td>
+                      <td>
+                        {s.classGroup.name}
+                        {DOT}
+                        {s.section.name}
+                      </td>
+                      <td>{s.hostel ? s.hostel.name : 'Day scholar'}</td>
+                      <td>
+                        <span className="stu-tablet">
+                          <i className={tabletTone(s)} aria-hidden="true" />
+                          {s.tablet ? s.tablet.serialNumber : <span className="muted">Not assigned</span>}
+                        </span>
+                      </td>
+                      <td>{seen ? fmtAgo(seen) : <span className="muted">Never</span>}</td>
+                      <td>
+                        <div className="stu-score">
+                          <div className="stu-meter">
+                            <i className={avg === null ? '' : avg >= 80 ? 'navy' : avg >= 60 ? 'gold' : 'orange'} style={{ width: `${avg ?? 0}%` }} />
+                          </div>
+                          <b>{avg === null ? DASH : `${Math.round(avg)}%`}</b>
+                        </div>
+                      </td>
+                      <td>
+                        <StatusPill status={s.status} />
+                      </td>
+                      <td className="stu-open">
+                        <Link to={`/students/${s.id}`} aria-label={`Open ${s.fullName}`}>
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                            <path d="M9 6l6 6-6 6" />
+                          </svg>
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {q.data && q.data.total > 0 && (
+          <div className="stu-foot">
+            <span>
+              Showing {from}&ndash;{to} of {q.data.total.toLocaleString('en-IN')}
+            </span>
+            {q.data.total > q.data.pageSize && <Pager page={page} pageSize={q.data.pageSize} total={q.data.total} onPage={(p) => set('page', String(p))} />}
+          </div>
+        )}
+      </section>
 
       <Modal open={adding} title="Add student" onClose={() => setAdding(false)} wide>
         <AddStudentForm onClose={() => setAdding(false)} />
       </Modal>
-    </>
+    </div>
   );
 }
 
@@ -268,7 +378,7 @@ function AddStudentForm({ onClose }: { onClose: () => void }) {
       </Field>
       <Field label="Class and section">
         <select required value={f.sectionId} onChange={upd('sectionId')}>
-          <option value="">Choose…</option>
+          <option value="">Choose...</option>
           {sectionOptions(classes.data).map((o) => (
             <option key={o.id} value={o.id}>
               {o.label}
@@ -316,7 +426,7 @@ function AddStudentForm({ onClose }: { onClose: () => void }) {
             Cancel
           </button>
           <button className="btn btn-primary" disabled={busy}>
-            {busy ? 'Adding…' : 'Add student'}
+            {busy ? 'Adding...' : 'Add student'}
           </button>
         </div>
       </div>

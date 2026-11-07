@@ -1,0 +1,84 @@
+﻿/* Tablets, Staff and Audit log pages, Navy & Gold design (same look as Students). */
+
+.pg { display: grid; gap: 20px; }
+.pg-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+.pg-head h1 { font-size: 30px; font-weight: 700; letter-spacing: -0.01em; }
+.pg-head p { margin-top: 4px; }
+.pg .btn svg { width: 16px; height: 16px; }
+
+.pg-tabs { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; }
+.pg-tabs button { text-align: left; padding: 16px 18px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); box-shadow: var(--shadow); display: grid; gap: 4px; cursor: pointer; color: var(--ink); }
+.pg-tabs button:hover { border-color: var(--line-strong); }
+.pg-tabs button span { display: flex; align-items: center; gap: 7px; font-size: 13.5px; font-weight: 600; color: var(--ink-2); }
+.pg-tabs button b { font-family: var(--display); font-size: 26px; font-weight: 700; }
+.pg-tabs button[aria-pressed='true'] { border: 2px solid var(--navy); padding: 15px 17px; background: #f4f6fa; }
+.pg-tabs button[aria-pressed='true'] span { color: var(--navy); }
+
+.pg-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); min-width: 0; }
+.pg-pad { padding: 18px; }
+.pg-filters { display: flex; gap: 12px; padding: 16px 18px; border-bottom: 1px solid #ecedf1; flex-wrap: wrap; align-items: center; }
+.pg-search { flex: 1 1 240px; display: flex; align-items: center; gap: 10px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line-strong); color: var(--ink-2); }
+.pg-search svg { width: 16px; height: 16px; flex: none; }
+.pg-search input, .pg-search input:focus { border: 0; box-shadow: none; padding: 0; min-height: 40px; background: transparent; outline: none; }
+.pg-search:focus-within { border-color: var(--navy); box-shadow: 0 0 0 3px rgb(18 41 73 / 12%); }
+.pg-select { display: flex; align-items: center; gap: 8px; color: var(--ink-2); font-size: 13.5px; }
+.pg-select select, .pg-select input { width: auto; min-width: 120px; max-width: 200px; min-height: 40px; color: var(--ink); }
+
+.pg-table { overflow-x: auto; }
+.pg-table table { width: 100%; min-width: 860px; border-collapse: collapse; }
+.pg-table th { text-align: left; font-size: 12.5px; font-weight: 600; color: var(--ink-2); background: #f8f8fa; padding: 12px 10px; white-space: nowrap; }
+.pg-table th:first-child, .pg-table td:first-child { padding-left: 18px; }
+.pg-table th:last-child, .pg-table td:last-child { padding-right: 18px; }
+.pg-table td { padding: 12px 10px; border-top: 1px solid #ecedf1; color: #3c4457; vertical-align: middle; }
+.pg-table tbody tr:hover td { background: #f8f9fc; }
+.pg-table .num { text-align: right; }
+.pg-table td.actions { text-align: right; white-space: nowrap; }
+.pg-table td.actions .btn + .btn { margin-left: 6px; }
+
+.pg-person { display: flex; align-items: center; gap: 12px; }
+.pg-person > span:last-child { display: grid; min-width: 0; }
+.pg-avatar { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 13px; flex: none; }
+.pg-avatar.sq { border-radius: 10px; }
+.pg-avatar.navy { background: #e7ecf4; color: var(--navy); }
+.pg-avatar.blue { background: #e2e8fb; color: #1e3a8a; }
+.pg-avatar.gold { background: var(--gold-soft); color: var(--gold-ink); }
+.pg-avatar.plum { background: #f3e3f4; color: #6b1f6e; }
+.pg-avatar.grey { background: #ecedf1; color: #3c4457; }
+.pg-avatar svg { width: 18px; height: 18px; }
+.pg-strong { font-weight: 600; color: var(--ink); text-decoration: none; }
+a.pg-strong:hover { text-decoration: underline; }
+.pg-sub { font-size: 12.5px; color: var(--ink-2); }
+.pg-mono { font-family: var(--mono); }
+.pg-you { font-size: 12px; font-weight: 600; color: var(--gold-ink); background: var(--gold-soft); padding: 1px 8px; border-radius: 999px; margin-left: 6px; }
+
+.pg-dot { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; font-weight: 500; }
+.pg-dot i { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.pg-dot.on i { background: #1f9d6c; }
+.pg-dot.low i { background: #d18a00; }
+.pg-dot.off i { background: #c9262c; }
+.pg-dot.none i { background: #a3a9b5; }
+
+.pg-pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+.pg-pill.navy { background: #e7ecf4; color: var(--navy); }
+.pg-pill.blue { background: #e2e8fb; color: #1e3a8a; }
+.pg-pill.gold { background: var(--gold-soft); color: var(--gold-ink); }
+.pg-pill.green { background: #e3f3ea; color: #1d7a50; }
+.pg-pill.orange { background: #fcebd9; color: #8a3b05; }
+.pg-pill.red { background: #fdecec; color: #a61e23; }
+.pg-pill.grey { background: #ecedf1; color: #3c4457; }
+
+.pg-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 14px 18px; border-top: 1px solid #ecedf1; color: var(--ink-2); font-size: 13.5px; flex-wrap: wrap; }
+.pg-note { padding: 12px 16px; border-radius: 12px; background: #eef2fb; color: #3c4457; font-size: 13.5px; }
+
+/* Audit log */
+.pg-action { display: flex; align-items: center; gap: 10px; }
+.pg-action i { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; flex: none; font-style: normal; }
+.pg-action i svg { width: 15px; height: 15px; }
+.pg-action i.signin { background: #e2e8fb; color: #1e3a8a; }
+.pg-action i.create { background: #e3f3ea; color: #1d7a50; }
+.pg-action i.change { background: var(--gold-soft); color: var(--gold-ink); }
+.pg-action i.remove { background: #fdecec; color: #a61e23; }
+.pg-action i.other { background: #ecedf1; color: #3c4457; }
+.pg-meta { margin: 8px 0 0; padding: 10px 12px; background: var(--sunk); border-radius: 10px; font: 12.5px/1.45 var(--mono); white-space: pre-wrap; max-width: 460px; color: var(--ink); }
+.pg-link { background: none; border: 0; padding: 0; color: var(--navy); font-weight: 600; cursor: pointer; font-size: 13.5px; }
+.pg-link:hover { text-decoration: underline; }
