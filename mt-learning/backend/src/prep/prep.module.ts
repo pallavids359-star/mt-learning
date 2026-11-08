@@ -1,4 +1,4 @@
-﻿import { Body, Controller, Delete, Get, HttpCode, Logger, Module, Param, ParseUUIDPipe, Post, Put, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Logger, Module, Param, ParseUUIDPipe, Post, Put, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { StudentPrincipal } from '../common/auth-principal';
 import { CurrentStudent, RequirePermissions, StudentOnly } from '../common/decorators';
@@ -133,6 +133,11 @@ export class QuestionBankController {
     return this.svc.staffSyllabus(q.examId);
   }
 
+  @Get('questions') @RequirePermissions(Permission.TestsWrite)
+  questions(@Query() q: BrowseQueryDto) {
+    return this.svc.browse(q.chapterId, q.page ?? 1);
+  }
+
   @Get('chapters/:chapterId/topics') @RequirePermissions(Permission.TestsWrite)
   topics(@Param('chapterId') chapterId: string) {
     return this.svc.topics(chapterId.slice(0, 64));
@@ -141,10 +146,6 @@ export class QuestionBankController {
   @Post('pick') @HttpCode(200) @RequirePermissions(Permission.TestsWrite)
   pick(@Body() dto: PickDto) {
     return this.svc.pick(dto);
-  }
-  @Get('questions') @RequirePermissions(Permission.TestsWrite)
-  questions(@Query() q: BrowseQueryDto) {
-    return this.svc.browse(q.chapterId, q.page ?? 1);
   }
 }
 

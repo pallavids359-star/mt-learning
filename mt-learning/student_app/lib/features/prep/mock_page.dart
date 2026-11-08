@@ -65,7 +65,13 @@ class _MockPageState extends State<MockPage> {
     final exam = app.exam;
     if (exam == null) return const PageBody(children: [ExamChoice()]);
     if (_examId != exam.id) _load(exam.id);
-    final pattern = _patterns[exam.code];
+    final pattern = exam.code == 'KCET'
+        ? switch (_stream) {
+            'PCB' => ('Physics 60 \u00b7 Chemistry 60 \u00b7 Biology 60', '180 questions \u00b7 4 hours'),
+            'PCMB' => ('Physics 60 \u00b7 Chemistry 60 \u00b7 Maths 60 \u00b7 Biology 60', '240 questions \u00b7 5 h 20 min'),
+            _ => ('Physics 60 \u00b7 Chemistry 60 \u00b7 Maths 60', '180 questions \u00b7 4 hours'),
+          }
+        : _patterns[exam.code];
 
     return PageBody(maxWidth: 960, children: [
       Row(children: [
@@ -97,6 +103,7 @@ class _MockPageState extends State<MockPage> {
               segments: const [
                 ButtonSegment(value: 'PCM', label: Text('PCM (Maths)')),
                 ButtonSegment(value: 'PCB', label: Text('PCB (Biology)')),
+                ButtonSegment(value: 'PCMB', label: Text('PCMB (all four)')),
               ],
               selected: {_stream},
               onSelectionChanged: (s) => setState(() => _stream = s.first),

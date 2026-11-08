@@ -106,14 +106,23 @@ export function score(
 }
 
 /** Mock-test patterns, as in GenPrep: [subject key, question count], minutes. */
-export const MOCK_PATTERNS: Record<string, { minutes: number; sections: [string, number][] }> = {
-  NEET: { minutes: 180, sections: [['physics', 45], ['chemistry', 45], ['biology', 90]] },
-  JEE: { minutes: 180, sections: [['physics', 25], ['chemistry', 25], ['mathematics', 25]] },
-  KCET_PCM: { minutes: 240, sections: [['physics', 60], ['chemistry', 60], ['mathematics', 60]] },
-  KCET_PCB: { minutes: 240, sections: [['physics', 60], ['chemistry', 60], ['biology', 60]] },
+/** Mock papers: [subject, questions, at least this many with a diagram]. */
+export const MOCK_PATTERNS: Record<string, { minutes: number; sections: [string, number, number][] }> = {
+  NEET: { minutes: 180, sections: [['physics', 45, 7], ['chemistry', 45, 7], ['biology', 90, 12]] },
+  JEE: { minutes: 180, sections: [['physics', 25, 12], ['chemistry', 25, 12], ['mathematics', 25, 12]] },
+  KCET_PCM: { minutes: 240, sections: [['physics', 60, 15], ['chemistry', 60, 15], ['mathematics', 60, 15]] },
+  KCET_PCB: { minutes: 240, sections: [['physics', 60, 15], ['chemistry', 60, 15], ['biology', 60, 15]] },
+  KCET_PCMB: { minutes: 320, sections: [['physics', 60, 15], ['chemistry', 60, 15], ['mathematics', 60, 15], ['biology', 60, 15]] },
 };
 
-export function mockPattern(code: string, stream?: 'PCM' | 'PCB'): { key: string; label: string } {
-  if (code === 'KCET') return stream === 'PCB' ? { key: 'KCET_PCB', label: 'KCET (PCB)' } : { key: 'KCET_PCM', label: 'KCET (PCM)' };
+/** Practice: about a third of the questions have a diagram (10 -> 3, 15 -> 5). */
+export const practiceImages = (count: number) => Math.ceil(count * 0.3);
+
+export function mockPattern(code: string, stream?: 'PCM' | 'PCB' | 'PCMB'): { key: string; label: string } {
+  if (code === 'KCET') {
+    if (stream === 'PCB') return { key: 'KCET_PCB', label: 'KCET (PCB)' };
+    if (stream === 'PCMB') return { key: 'KCET_PCMB', label: 'KCET (PCMB)' };
+    return { key: 'KCET_PCM', label: 'KCET (PCM)' };
+  }
   return { key: code, label: code };
 }

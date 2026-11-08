@@ -1,4 +1,4 @@
-﻿import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { and, count, desc, eq, inArray, isNotNull, sql } from 'drizzle-orm';
 import type { StudentPrincipal } from '../common/auth-principal';
 import { CollegeClock, ScopeService } from '../common/scope.service';
@@ -7,7 +7,7 @@ import { InjectDb, type Database } from '../db/db.module';
 import { prepAnswers, prepAttempts, prepBookmarks, students, type PrepItem } from '../db/schema';
 import { type BankExam, type BankQuestion, type FullQuestion, QUESTION_BANK, type QuestionBank, shuffle, studentView, subjectKey } from './bank';
 import type { AnswersDto, MockDto, PickDto, PracticeDto, ReviseDto } from './prep.dto';
-import { applyAnswers, MOCK_PATTERNS, mockPattern, score } from './scoring';
+import { applyAnswers, MOCK_PATTERNS, mockPattern, practiceImages, score } from './scoring';
 
 type AttemptRow = typeof prepAttempts.$inferSelect;
 
@@ -82,7 +82,7 @@ export class PrepService {
     });
     const size = dto.count ?? 10;
     const difficulty = dto.difficulty && dto.difficulty !== 'any' ? dto.difficulty : undefined;
-    const questions = await this.bank.sample({ examId: exam.id, parts, difficulty }, size);
+    const questions = await this.bank.sample({ examId: exam.id, parts, difficulty, minImages: practiceImages(size) }, size);
     if (!questions.length) throw new NotFoundException('No questions found for these choices');
     const title = chosen.length === 1 ? chosen[0].name : `${chosen.length} chapters`;
     const attempt = await this.create(me, exam, 'practice', title, { chapterIds: chosen.map((c) => c.id), topicIds: topics.map((t) => t.id), difficulty: dto.difficulty ?? 'any', count: size }, questions, null);
@@ -99,9 +99,9 @@ export class PrepService {
     if (!pattern) throw new BadRequestException(`Mock tests are not ready for ${exam.code} yet`);
     const subjects = await this.bank.subjects(exam.id);
     const picked: BankQuestion[] = [];
-    for (const [name, n] of pattern.sections) {
+    for (const [name, n, images] of pattern.sections) {
       const s = subjects.find((x) => subjectKey(x.name) === name);
-      if (s) picked.push(...(await this.bank.sample({ examId: exam.id, subjectId: s.id }, n)));
+      if (s) picked.push(...(await this.bank.sample({ examId: exam.id, subjectId: s.id, minImages: images }, n)));
     }
     if (!picked.length) throw new NotFoundException(`No questions are available for ${label} yet`);
     const [{ n }] = await this.db.select({ n: count() }).from(prepAttempts).where(and(eq(prepAttempts.studentId, me.id), eq(prepAttempts.examId, exam.id), eq(prepAttempts.mode, 'mock')));
@@ -586,6 +586,7 @@ export class PrepService {
       .slice(0, dto.count);
     return { items, wanted: dto.count };
   }
+
   /** Single-answer questions of a chapter, already in live-test format (four options, one correct). */
   async browse(chapterId: string, page = 1) {
     const pageSize = 25;

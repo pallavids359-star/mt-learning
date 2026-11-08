@@ -59,7 +59,7 @@ export class PracticeDto {
 
 export class MockDto {
   @ApiProperty() @IsString() @MaxLength(BANK_ID) examId: string;
-  @ApiPropertyOptional({ enum: ['PCM', 'PCB'], description: 'KCET only' }) @IsOptional() @IsIn(['PCM', 'PCB']) stream?: 'PCM' | 'PCB';
+  @ApiPropertyOptional({ enum: ['PCM', 'PCB', 'PCMB'], description: 'KCET only' }) @IsOptional() @IsIn(['PCM', 'PCB', 'PCMB']) stream?: 'PCM' | 'PCB' | 'PCMB';
 }
 
 export class ReviseDto {

@@ -2,7 +2,7 @@ import { Logger } from '@nestjs/common';
 import { createHash } from 'node:crypto';
 import { Pool } from 'pg';
 import { poolConfig } from '../db/pg-config';
-import type { BankChapter, BankExam, BankOption, BankQuestion, BankSubject, BankTopic, FullQuestion, OptionId, QuestionBank, SampleFilter } from './bank';
+import { shuffle, type BankChapter, type BankExam, type BankOption, type BankQuestion, type BankSubject, type BankTopic, type FullQuestion, type OptionId, type QuestionBank, type SampleFilter } from './bank';
 
 /**
  * Reads GenPrep's question bank from its Supabase (PostgreSQL) project: one flat `questions`
@@ -54,6 +54,32 @@ const ROMAN = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x'];
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SUBJECT_ORDER = ['physics', 'chemistry', 'biology', 'botany', 'zoology', 'mathematics', 'maths'];
 
+/** All the text a student sees in a question. */
+const SEEN = `concat_ws(' ', question, opt_a, opt_b, opt_c, opt_d, assertion, reason)`;
+/** A field with LaTeX commands (like \\frac) but no $ around them, so they would show as code. */
+const rawTex = (col: string) => `(coalesce(${col}, '') ~ '\\\\[a-zA-Z]{2,}' and coalesce(${col}, '') !~ '\\$')`;
+
+/**
+ * Leaves out questions students should not see:
+ *  - placeholders such as "[DIAGRAM REQUIRED]" or "figure not available" (the picture is missing);
+ *  - broken maths: an odd number of $ signs, or LaTeX commands outside $...$;
+ *  - incomplete questions: very short text, or a multiple-choice question without all four options;
+ *  - true / false questions.
+ */
+const QUALITY = `
+  and ${SEEN} !~* '(diagram|figure|image|graph|picture|fig\\.?)\\s*(is\\s*)?(required|needed|missing|not\\s+(available|shown|given|provided))'
+  and ${SEEN} !~* '\\[\\s*(diagram|figure|image|graph|picture|fig)'
+  and (length(${SEEN}) - length(replace(${SEEN}, '$', ''))) % 2 = 0
+  and not (${['question', 'opt_a', 'opt_b', 'opt_c', 'opt_d'].map(rawTex).join(' or ')})
+  and (q_type = 'match' or length(trim(coalesce(question, '') || coalesce(assertion, ''))) >= 15)
+  and not (q_type in ('mcq_single', 'mcq_multi', 'mcq') and (coalesce(trim(opt_c), '') = '' or coalesce(trim(opt_d), '') = ''))
+  and not (lower(trim(coalesce(opt_a, ''))) in ('true', 'false', 't', 'f') and lower(trim(coalesce(opt_b, ''))) in ('true', 'false', 't', 'f'))
+  and coalesce(question, '') !~* '^\\s*(state\\s+)?(whether\\s+)?(true\\s*(or|/)\\s*false)'
+`;
+
+/** Questions with a diagram or picture: a {{IMG::...}} marker, a Markdown or HTML image, or a picture link. */
+const HAS_IMAGE = `${SEEN} ~* '\\{\\{IMG::|!\\[[^]]*\\]\\(|<img|https?://[^\\s)]+\\.(png|jpe?g|gif|webp|svg)|/storage/v1/object/'`;
+
 /** Questions MT Learning can show and mark. Anything else (written answers, broken rows) is left out. */
 const USABLE = `(
   coalesce(review_status, '') <> 'rejected'
@@ -65,6 +91,7 @@ const USABLE = `(
     or (q_type = 'match' and match_options ? 'A' and match_options ? 'B' and upper(correct_option) ~ '^\\s*[A-D]\\s*$')
     or (q_type = 'numerical' and coalesce(nullif(trim(correct_option), ''), trim(num_answer)) ~ '^[\\$\\s]*-?[0-9]+(\\.[0-9]+)?(/[0-9]+)?[\\$\\s]*$')
   )
+  ${QUALITY}
 )`;
 
 const COLUMNS = `id, subject, klass, chapter, topic, exams, q_type, question, opt_a, opt_b, opt_c, opt_d,
@@ -95,7 +122,18 @@ export interface GenPrepRow {
   review_status: string | null;
 }
 
-const clean = (v: unknown) => (v == null ? '' : String(v).trim());
+/** Text cleaned for display. \AA (the angstrom sign) is not drawn by the maths renderers, so it becomes the letter. */
+const clean = (v: unknown) =>
+  v == null
+    ? ''
+    : String(v)
+        .trim()
+        .replace(/\\text\{\s*\\AA\s*\}/g, '\\text{\u00c5}')
+        .replace(/\\AA(?![a-zA-Z])/g, '\\text{\u00c5}')
+        // Pictures written as Markdown, HTML or a bare link become {{IMG::...}}, which the apps draw.
+        .replace(/!\[[^\]]*\]\((https?:[^)\s]+)\)/g, '{{IMG::$1}}')
+        .replace(/<img[^>]*\ssrc=["']([^"']+)["'][^>]*>/gi, '{{IMG::$1}}')
+        .replace(/(?<!IMG::)(https?:\/\/[^\s)}]+\.(?:png|jpe?g|gif|webp|svg))(?![^\s]*\}\})/gi, '{{IMG::$1}}');
 const hash = (s: string) => createHash('sha1').update(s).digest('base64url').slice(0, 12);
 const examCode = (v: string) => v.trim().toUpperCase();
 
@@ -367,13 +405,23 @@ export class SupabaseQuestionBank implements QuestionBank {
   async sample(filter: SampleFilter, size: number): Promise<BankQuestion[]> {
     const w = await this.where(filter);
     if (!w || size <= 0) return [];
-    // Ask for a few extra in case some rows can't be turned into questions.
-    const { rows } = await this.pool.query<GenPrepRow>(`select ${COLUMNS} from questions where ${w.sql} order by random() limit ${Math.min(size + 10, 400)}`, w.params);
-    return rows
-      .map((r) => toFullQuestion(r, filter.examId))
-      .filter((q): q is FullQuestion => !!q)
-      .slice(0, size)
-      .map(({ correctOptionIds: _c, numerical: _n, explanation: _e, status: _s, ...q }) => q);
+    const convert = (rows: GenPrepRow[]) =>
+      rows
+        .map((r) => toFullQuestion(r, filter.examId))
+        .filter((q): q is FullQuestion => !!q)
+        .map(({ correctOptionIds: _c, numerical: _n, explanation: _e, status: _s, ...q }) => q);
+    // First the questions with diagrams the paper needs, then the rest (a few extra in case some rows can't be used).
+    const want = Math.min(Math.max(0, filter.minImages ?? 0), size);
+    const withImages = want
+      ? convert((await this.pool.query<GenPrepRow>(`select ${COLUMNS} from questions where ${w.sql} and ${HAS_IMAGE} order by random() limit ${want + 5}`, w.params)).rows).slice(0, want)
+      : [];
+    const taken = withImages.map((q) => q.id.slice(q.id.indexOf('~') + 1));
+    const { rows } = await this.pool.query<GenPrepRow>(
+      `select ${COLUMNS} from questions where ${w.sql} and not (id = any($${w.params.length + 1}::uuid[])) order by random() limit ${Math.min(size + 10, 400)}`,
+      [...w.params, taken],
+    );
+    const rest = convert(rows).slice(0, size - withImages.length);
+    return withImages.length ? shuffle([...withImages, ...rest]) : rest;
   }
 
   async questions(ids: string[]): Promise<FullQuestion[]> {

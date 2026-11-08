@@ -87,6 +87,8 @@ export interface SampleFilter {
   parts?: { chapterId: string; topicIds?: string[] }[];
   subjectId?: string;
   difficulty?: Difficulty;
+  /** At least this many questions with a diagram or picture, when the bank has them. */
+  minImages?: number;
 }
 
 export interface QuestionBank {

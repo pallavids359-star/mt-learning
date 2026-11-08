@@ -31,11 +31,23 @@ beforeAll(async () => {
   const base = { subject: 'Physics', klass: '12', chapter: 'Magnetism and Matter', review_status: 'pending', acceptance_status: 'pending' };
   await ins({ ...base, id: '11111111-1111-4111-8111-111111111111', topic: 'Magnetic Properties of Materials', exams: ['NEET'], q_type: 'mcq_single', question: 'Which statement is true?', opt_a: 'Diamagnet moment is zero.', opt_b: 'Paramagnet moment is zero.', opt_c: 'Ferromagnet moment is zero.', opt_d: 'Ferromagnet demagnetises fast.', correct_option: 'A', solution_text: 'All electrons are paired.' });
   await ins({ ...base, id: '22222222-2222-4222-8222-222222222222', topic: 'Magnetic Properties of Materials', exams: ['NEET', 'JEE'], q_type: 'assertion_reason', assertion: 'Permeability is independent of field.', reason: 'Permeability does not depend on temperature.', predef_options: AR_OPTIONS, correct_option: 'D', solution_text: 'Assertion is false.' });
-  await ins({ ...base, id: '33333333-3333-4333-8333-333333333333', topic: 'The Bar Magnet', exams: ['NEET'], q_type: 'match', column_a: ['Magnetic poles', 'Magnetic axis'], column_b: ['Distance between poles', 'Line through the poles'], match_options: { A: '(a) – (i), (b) – (ii)', B: '(a) – (ii), (b) – (i)', C: '(a) – (i), (b) – (i)', D: '(a) – (ii), (b) – (ii)' }, correct_option: 'B' });
+  await ins({ ...base, id: '44444444-4444-4444-8444-444444444443', topic: 'The Bar Magnet', exams: ['NEET'], q_type: 'match', column_a: ['Magnetic poles', 'Magnetic axis'], column_b: ['Distance between poles', 'Line through the poles'], match_options: { A: '(a) – (i), (b) – (ii)', B: '(a) – (ii), (b) – (i)', C: '(a) – (i), (b) – (i)', D: '(a) – (ii), (b) – (ii)' }, correct_option: 'B' });
   await ins({ ...base, chapter: 'Alternating Current', topic: 'LCR', exams: ['JEE'], q_type: 'numerical', question: 'Find the current.', correct_option: '1/2', solution_text: 'I = V/R' });
-  await ins({ ...base, klass: '11', chapter: 'Units and Measurements', topic: '', exams: ['JEE'], q_type: 'mcq_single', question: 'Pick two.', opt_a: 'a', opt_b: 'b', opt_c: 'c', opt_d: 'd', correct_option: 'A, C' });
+  // Questions with pictures (counted by minImages).
+  await ins({ ...base, id: '68686868-6868-4868-8868-686868686861', exams: ['KCET'], chapter: 'Ray Optics', q_type: 'mcq_single', question: 'Find the image distance in the figure. {{IMG::https://img.example/ray1.png}}', opt_a: '10 cm', opt_b: '20 cm', opt_c: '30 cm', opt_d: '40 cm', correct_option: 'A' });
+  await ins({ ...base, id: '68686868-6868-4868-8868-686868686862', exams: ['KCET'], chapter: 'Ray Optics', q_type: 'mcq_single', question: 'Name the lens shown here: ![lens](https://img.example/lens.jpg)', opt_a: 'Convex', opt_b: 'Concave', opt_c: 'Plane', opt_d: 'Cylindrical', correct_option: 'A' });
+  for (let i = 0; i < 6; i++) {
+    await ins({ ...base, exams: ['KCET'], chapter: 'Ray Optics', q_type: 'mcq_single', question: `Which statement about refraction number ${i} is right?`, opt_a: 'One', opt_b: 'Two', opt_c: 'Three', opt_d: 'Four', correct_option: 'B' });
+  }
+  // Never shown: a missing picture, broken maths, an incomplete question, true / false.
+  await ins({ ...base, id: '59595959-5959-4959-8959-595959595951', exams: ['NEET'], q_type: 'mcq_single', question: 'The graph of B against d is correctly shown by', opt_a: '[DIAGRAM REQUIRED]', opt_b: '[DIAGRAM REQUIRED]', opt_c: '[DIAGRAM REQUIRED]', opt_d: '[DIAGRAM REQUIRED]', correct_option: 'A' });
+  await ins({ ...base, id: '59595959-5959-4959-8959-595959595952', exams: ['NEET'], q_type: 'mcq_single', question: 'The value of \\frac{1}{2} plus one half is', opt_a: '1', opt_b: '2', opt_c: '3', opt_d: '4', correct_option: 'A' });
+  await ins({ ...base, id: '59595959-5959-4959-8959-595959595953', exams: ['NEET'], q_type: 'mcq_single', question: 'Which of these is a vector quantity?', opt_a: 'Speed', opt_b: 'Velocity', opt_c: '', opt_d: '', correct_option: 'B' });
+  await ins({ ...base, id: '59595959-5959-4959-8959-595959595954', exams: ['NEET'], q_type: 'mcq_single', question: 'Diamagnets are repelled by a magnet.', opt_a: 'True', opt_b: 'False', opt_c: 'Cannot say', opt_d: 'None', correct_option: 'A' });
+  await ins({ ...base, klass: '11', chapter: 'Units and Measurements', topic: '', exams: ['JEE MAIN'], q_type: 'mcq_single', question: 'Pick the two correct statements.', opt_a: 'a', opt_b: 'b', opt_c: 'c', opt_d: 'd', correct_option: 'A, C' });
   // Must be left out: a written answer, a rejected question, no correct option.
   await ins({ ...base, chapter: 'Alternating Current', topic: 'LCR', exams: ['JEE'], q_type: 'numerical', question: 'Explain.', num_answer: '(a) 1.7 × $10^7$ J (b) 5.4 H', correct_option: '' });
+  await ins({ ...base, exams: ['FOUNDATION'], q_type: 'mcq_single', question: 'Other exam', opt_a: 'x', opt_b: 'y', correct_option: 'A' });
   await ins({ ...base, exams: ['NEET'], q_type: 'mcq_single', question: 'Rejected', opt_a: 'x', opt_b: 'y', correct_option: 'A', review_status: 'rejected' });
   await ins({ ...base, exams: ['NEET'], q_type: 'mcq_single', question: 'No answer', opt_a: 'x', opt_b: 'y', correct_option: '' });
   bank = new SupabaseQuestionBank(`${url}${url.includes('?') ? '&' : '?'}options=${encodeURIComponent('-c search_path=genprep')}`);
@@ -50,7 +62,7 @@ afterAll(async () => {
 describe('question bank on Supabase', () => {
   it('builds exams, subjects, chapters and topics from the questions table', async () => {
     const exams = await bank.exams();
-    expect(exams.map((e) => e.code)).toEqual(['NEET', 'JEE']);
+    expect(exams.map((e) => e.code)).toEqual(['NEET', 'JEE', 'KCET']);
     expect(exams[0]).toMatchObject({ id: 'NEET', name: 'NEET (UG)', durationMinutes: 180, marking: { correct: 4, incorrect: -1 } });
     const subjects = await bank.subjects('NEET');
     expect(subjects.map((s) => s.name)).toEqual(['Physics']);
@@ -125,5 +137,15 @@ describe('question bank on Supabase', () => {
     expect(parseNumber(' -0.5 ')).toBe(-0.5);
     expect(parseNumber('sum')).toBeNull();
     expect(parseNumber('$\\frac12$')).toBeNull();
+  });
+
+  it('puts in the asked number of questions with pictures, and turns Markdown pictures into {{IMG::}}', async () => {
+    for (let n = 0; n < 5; n++) {
+      const qs = await bank.sample({ examId: 'KCET', minImages: 2 }, 4);
+      expect(qs).toHaveLength(4);
+      expect(qs.filter((q) => q.text.includes('{{IMG::')).length).toBe(2);
+    }
+    const lens = (await bank.sample({ examId: 'KCET', minImages: 2 }, 2)).find((q) => q.text.startsWith('Name the lens'))!;
+    expect(lens.text).toBe('Name the lens shown here: {{IMG::https://img.example/lens.jpg}}');
   });
 });
