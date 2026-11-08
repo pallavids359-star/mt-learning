@@ -1,34 +1,38 @@
 import 'package:flutter/material.dart';
 
-/// "Calm & Simple" palette, shared with the admin portal: one deep green for actions,
-/// quiet greys, white menus and cards, and one colour per subject.
+/// "Navy & Gold" palette, the same as the admin portal: navy for the menu and actions,
+/// gold for highlights, light grey background, white cards, and one colour per subject.
 class Palette {
-  static const bg = Color(0xFFF6F7F5);
+  static const bg = Color(0xFFF1F1F3);
   static const surface = Color(0xFFFFFFFF);
-  static const sunk = Color(0xFFF1F3F1);
-  static const ink = Color(0xFF1C2421);
-  static const ink2 = Color(0xFF4F5A55);
-  static const ink3 = Color(0xFF6B7570);
-  static const line = Color(0xFFE3E7E4);
-  static const board = Color(0xFF0E6B4E); // deep green: main colour
-  static const board2 = Color(0xFF0A5139);
-  static const boardSoft = Color(0xFFE8F3EE);
+  static const sunk = Color(0xFFF5F5F8);
+  static const ink = Color(0xFF14213A);
+  static const ink2 = Color(0xFF5A6478);
+  static const ink3 = Color(0xFF7A8295);
+  static const line = Color(0xFFE3E5EB);
+  static const board = Color(0xFF122949); // navy: main colour
+  static const board2 = Color(0xFF0C1D35);
+  static const boardSoft = Color(0xFFE7ECF4);
+  static const gold = Color(0xFFCEA434); // gold: highlights, logo, selected menu icon
+  static const goldSoft = Color(0xFFF6ECD2);
+  static const goldInk = Color(0xFF6F520A);
+  static const menuText = Color(0xFFC9D2E1); // text on the navy menu
   static const marigold = Color(0xFFB4530F); // warm orange: "marked for review" and saved questions
   static const marigoldSoft = Color(0xFFFBEDE3);
-  static const ok = Color(0xFF0E6B4E);
-  static const okSoft = Color(0xFFE8F3EE);
+  static const ok = Color(0xFF1D7A50);
+  static const okSoft = Color(0xFFE3F3EA);
   static const warn = Color(0xFF9A3F0A);
   static const warnSoft = Color(0xFFFBEDE3);
   static const bad = Color(0xFFA1271B);
-  static const teal = Color(0xFF0E6B4E); // buttons and links
-  static const tealSoft = Color(0xFFE8F3EE);
+  static const teal = Color(0xFF122949); // buttons and links (navy)
+  static const tealSoft = Color(0xFFE7ECF4);
 
   /// Calm solid colours for the few coloured cards (no bright gradients).
   static const tiles = [
-    [Color(0xFF0E6B4E), Color(0xFF0E6B4E)],
-    [Color(0xFF2D5F6B), Color(0xFF2D5F6B)],
-    [Color(0xFF3F4A45), Color(0xFF3F4A45)],
-    [Color(0xFF5B4E7A), Color(0xFF5B4E7A)],
+    [Color(0xFF122949), Color(0xFF122949)],
+    [Color(0xFF1E3A8A), Color(0xFF1E3A8A)],
+    [Color(0xFF3C4457), Color(0xFF3C4457)],
+    [Color(0xFF6B1F6E), Color(0xFF6B1F6E)],
   ];
   static const badSoft = Color(0xFFFBEAE8);
 
@@ -111,12 +115,18 @@ ThemeData buildTheme() {
       style: OutlinedButton.styleFrom(
         minimumSize: const Size(0, 44),
         foregroundColor: Palette.ink,
-        side: const BorderSide(color: Color(0xFFC9D1CD)),
+        side: const BorderSide(color: Color(0xFFCDD2DC)),
         shape: RoundedRectangleBorder(borderRadius: radius),
         textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
       ),
     ),
-    chipTheme: base.chipTheme.copyWith(shape: const StadiumBorder(), side: const BorderSide(color: Palette.line)),
+    chipTheme: base.chipTheme.copyWith(
+      shape: const StadiumBorder(),
+      side: const BorderSide(color: Palette.line),
+      selectedColor: Palette.boardSoft,
+      checkmarkColor: Palette.board,
+    ),
+    progressIndicatorTheme: const ProgressIndicatorThemeData(color: Palette.board),
     snackBarTheme: const SnackBarThemeData(behavior: SnackBarBehavior.floating),
   );
 }

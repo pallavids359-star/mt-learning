@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+﻿import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { and, count, desc, eq, inArray, isNotNull, sql } from 'drizzle-orm';
 import type { StudentPrincipal } from '../common/auth-principal';
 import { CollegeClock, ScopeService } from '../common/scope.service';
@@ -6,7 +6,7 @@ import { loadEnv } from '../config/env';
 import { InjectDb, type Database } from '../db/db.module';
 import { prepAnswers, prepAttempts, prepBookmarks, students, type PrepItem } from '../db/schema';
 import { type BankExam, type BankQuestion, type FullQuestion, QUESTION_BANK, type QuestionBank, shuffle, studentView, subjectKey } from './bank';
-import type { AnswersDto, MockDto, PracticeDto, ReviseDto } from './prep.dto';
+import type { AnswersDto, MockDto, PickDto, PracticeDto, ReviseDto } from './prep.dto';
 import { applyAnswers, MOCK_PATTERNS, mockPattern, score } from './scoring';
 
 type AttemptRow = typeof prepAttempts.$inferSelect;
@@ -554,6 +554,38 @@ export class PrepService {
     return subjects.map((s) => ({ id: s.id, name: s.name, chapters: chapters.filter((c) => c.subjectId === s.id).map((c) => ({ id: c.id, name: c.name, classLevel: c.classLevel, questionCount: c.questionCount })) }));
   }
 
+  /**
+   * Random single-answer questions of one subject for a live test: from chosen chapters (and
+   * topics), or the whole subject; optionally only Class 11 or Class 12 chapters.
+   */
+  async pick(dto: PickDto) {
+    const exam = await this.exam(dto.examId);
+    let chosen = (await this.bank.chapters(exam.id)).filter((c) => c.subjectId === dto.subjectId);
+    if (dto.chapterIds?.length) {
+      const wanted = new Set(dto.chapterIds);
+      chosen = chosen.filter((c) => wanted.has(c.id));
+    }
+    if (dto.classLevel) chosen = chosen.filter((c) => c.classLevel === dto.classLevel);
+    if (!chosen.length) throw new BadRequestException('No chapters of this subject match these choices');
+    const topics = dto.topicIds?.length ? await this.bank.topicsByIds(dto.topicIds) : [];
+    const parts = chosen.map((c) => {
+      const t = topics.filter((x) => x.chapterId === c.id).map((x) => x.id);
+      return t.length ? { chapterId: c.id, topicIds: t } : { chapterId: c.id };
+    });
+    const exclude = new Set(dto.exclude ?? []);
+    const sampled = await this.bank.sample({ examId: exam.id, parts }, Math.min(400, Math.ceil(dto.count * 1.5) + 10 + exclude.size));
+    const ids = sampled.filter((q) => q.type === 'mcq_single' && !exclude.has(q.id)).map((q) => q.id);
+    const full = ids.length ? await this.bank.questions(ids) : [];
+    const names = new Map((await this.bank.topicsByIds([...new Set(full.map((q) => q.topicId))])).map((t) => [t.id, t.name]));
+    const items = full
+      .map((q) => {
+        const live = toLiveQuestion(q);
+        return live && { ...live, topic: names.get(q.topicId) ?? null };
+      })
+      .filter((q): q is NonNullable<typeof q> => !!q)
+      .slice(0, dto.count);
+    return { items, wanted: dto.count };
+  }
   /** Single-answer questions of a chapter, already in live-test format (four options, one correct). */
   async browse(chapterId: string, page = 1) {
     const pageSize = 25;

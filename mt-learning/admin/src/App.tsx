@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+﻿import type { ReactNode } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { P, useAuth } from './auth/AuthContext';
 import { Layout } from './components/Layout';
@@ -18,7 +18,7 @@ import { TabletsPage } from './pages/Tablets';
 import { LivePage } from './pages/Live';
 import { MaterialsPage } from './pages/Materials';
 import { NoticesPage } from './pages/Notices';
-import { TestEditorPage } from './pages/TestEditor';
+import { TestBuilderPage } from './pages/TestBuilder';
 import { TestMonitorPage } from './pages/TestMonitor';
 import { TestResultsPage } from './pages/TestResults';
 import { ResultsPage } from './pages/Results';
@@ -49,8 +49,8 @@ export function App() {
         <Route path="tablets" element={<Guard perm={P.TabletsRead}><TabletsPage /></Guard>} />
         <Route path="materials" element={<Guard perm={P.MaterialsRead}><MaterialsPage /></Guard>} />
         <Route path="tests" element={<Guard perm={P.TestsRead}><TestsPage /></Guard>} />
-        <Route path="tests/new" element={<Guard perm={P.TestsWrite}><TestEditorPage /></Guard>} />
-        <Route path="tests/:id" element={<Guard perm={P.TestsRead}><TestEditorPage /></Guard>} />
+        <Route path="tests/new" element={<Guard perm={P.TestsWrite}><TestBuilderPage /></Guard>} />
+        <Route path="tests/:id" element={<Guard perm={P.TestsRead}><TestBuilderPage /></Guard>} />
         <Route path="tests/:id/monitor" element={<Guard perm={P.TestsRead}><TestMonitorPage /></Guard>} />
         <Route path="tests/:id/results" element={<Guard perm={P.TestsReview}><TestResultsPage /></Guard>} />
         <Route path="results" element={<Guard perm={P.TestsReview}><ResultsPage /></Guard>} />

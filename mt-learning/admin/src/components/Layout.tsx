@@ -11,7 +11,13 @@ type Item = { to: string; label: string; perm: string; icon: IconName };
 
 const NAV: { group?: string; items: Item[] }[] = [
   { items: [{ to: '/', label: 'Dashboard', perm: P.DashboardView, icon: 'home' }] },
-  { group: 'College', items: [{ to: '/students', label: 'Students', perm: P.StudentsRead, icon: 'people' }] },
+  {
+    group: 'College',
+    items: [
+      { to: '/students', label: 'Students', perm: P.StudentsRead, icon: 'people' },
+      { to: '/classes', label: 'Classes & sections', perm: P.AcademicRead, icon: 'layers' },
+    ],
+  },
   {
     group: 'Exams',
     items: [

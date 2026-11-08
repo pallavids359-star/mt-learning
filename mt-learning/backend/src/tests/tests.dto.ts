@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+﻿import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 import {
   ArrayMaxSize,
@@ -25,7 +25,7 @@ const trim = ({ value }: { value: unknown }) => (typeof value === 'string' ? val
 const emptyToNull = ({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() || null : value);
 
 export class QuestionDto {
-  @ApiProperty() @Transform(trim) @IsString() @MinLength(2) @MaxLength(4000) text: string;
+  @ApiProperty() @Transform(trim) @IsString() @MinLength(2) @MaxLength(20000) text: string;
 
   @ApiProperty({ type: [String], minItems: 2, maxItems: 6 })
   @IsArray()
@@ -33,13 +33,13 @@ export class QuestionDto {
   @ArrayMaxSize(6)
   @IsString({ each: true })
   @MinLength(1, { each: true })
-  @MaxLength(1000, { each: true })
+  @MaxLength(5000, { each: true })
   options: string[];
 
   @ApiProperty({ description: 'Index of the correct option (0 = first)' }) @IsInt() @Min(0) @Max(5) correctIndex: number;
   @ApiPropertyOptional({ default: 1 }) @IsOptional() @IsNumber() @Min(0.25) @Max(20) marks?: number;
-  @ApiPropertyOptional() @IsOptional() @Transform(emptyToNull) @IsString() @MaxLength(120) topic?: string | null;
-  @ApiPropertyOptional() @IsOptional() @Transform(emptyToNull) @IsString() @MaxLength(4000) explanation?: string | null;
+  @ApiPropertyOptional() @IsOptional() @Transform(emptyToNull) @IsString() @MaxLength(200) topic?: string | null;
+  @ApiPropertyOptional() @IsOptional() @Transform(emptyToNull) @IsString() @MaxLength(20000) explanation?: string | null;
   @ApiPropertyOptional({ description: 'GenPrep question this was copied from' }) @IsOptional() @Transform(emptyToNull) @IsString() @MaxLength(64) bankQuestionId?: string | null;
   @ApiPropertyOptional({ description: 'Subject of the question in an exam test, e.g. Physics' }) @IsOptional() @Transform(emptyToNull) @IsString() @MaxLength(60) subject?: string | null;
 }
@@ -51,7 +51,7 @@ export class CreateTestDto {
   @ApiPropertyOptional({ enum: ['NEET', 'JEE', 'KCET'], description: 'Exam tests: decides the subjects' }) @IsOptional() @IsIn(['NEET', 'JEE', 'KCET']) examCode?: 'NEET' | 'JEE' | 'KCET';
   @ApiProperty() @Transform(trim) @IsString() @MinLength(3) @MaxLength(160) title: string;
   @ApiPropertyOptional() @IsOptional() @Transform(emptyToNull) @IsString() @MaxLength(2000) instructions?: string | null;
-  @ApiProperty({ example: 30 }) @IsInt() @Min(1) @Max(300) durationMin: number;
+  @ApiProperty({ example: 30 }) @IsInt() @Min(1) @Max(400) durationMin: number;
   @ApiProperty({ example: '2026-11-06T03:30:00.000Z' }) @IsISO8601({ strict: true }) opensAt: string;
   @ApiProperty({ example: '2026-11-06T15:30:00.000Z' }) @IsISO8601({ strict: true }) closesAt: string;
   @ApiPropertyOptional({ default: false }) @IsOptional() @IsBoolean() allowOffline?: boolean;
@@ -61,7 +61,7 @@ export class CreateTestDto {
   @ApiPropertyOptional({ type: [QuestionDto] })
   @IsOptional()
   @IsArray()
-  @ArrayMaxSize(200)
+  @ArrayMaxSize(400)
   @ValidateNested({ each: true })
   @Type(() => QuestionDto)
   questions?: QuestionDto[];
@@ -70,7 +70,7 @@ export class CreateTestDto {
 export class UpdateTestDto {
   @ApiPropertyOptional() @IsOptional() @Transform(trim) @IsString() @MinLength(3) @MaxLength(160) title?: string;
   @ApiPropertyOptional() @IsOptional() @Transform(emptyToNull) @IsString() @MaxLength(2000) instructions?: string | null;
-  @ApiPropertyOptional() @IsOptional() @IsInt() @Min(1) @Max(300) durationMin?: number;
+  @ApiPropertyOptional() @IsOptional() @IsInt() @Min(1) @Max(400) durationMin?: number;
   @ApiPropertyOptional() @IsOptional() @IsISO8601({ strict: true }) opensAt?: string;
   @ApiPropertyOptional() @IsOptional() @IsISO8601({ strict: true }) closesAt?: string;
   @ApiPropertyOptional() @IsOptional() @IsBoolean() allowOffline?: boolean;
@@ -81,7 +81,7 @@ export class UpdateTestDto {
 export class SetQuestionsDto {
   @ApiProperty({ type: [QuestionDto] })
   @IsArray()
-  @ArrayMaxSize(200)
+  @ArrayMaxSize(400)
   @ValidateNested({ each: true })
   @Type(() => QuestionDto)
   questions: QuestionDto[];

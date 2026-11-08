@@ -165,7 +165,7 @@ class _Rail extends StatelessWidget {
     final wide = MediaQuery.sizeOf(context).width >= 1000;
     return Container(
       width: wide ? 210 : 96,
-      decoration: const BoxDecoration(color: Palette.surface, border: Border(right: BorderSide(color: Palette.line))),
+      color: Palette.board,
       child: SafeArea(
         right: false,
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -175,14 +175,27 @@ class _Rail extends StatelessWidget {
                 ? const Row(children: [
                     BrandMark(size: 36),
                     SizedBox(width: 10),
-                    Text('MT Learning', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text('MT Learning', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16)),
+                        Text('Manchester Technologies', maxLines: 1, overflow: TextOverflow.fade, softWrap: false, style: TextStyle(color: Palette.menuText, fontSize: 11.5)),
+                      ]),
+                    ),
                   ])
                 : const Center(child: BrandMark(size: 40)),
           ),
           Expanded(
             child: ListView(padding: const EdgeInsets.symmetric(horizontal: 12), children: [
-              for (final t in ShellTab.values)
-                if (t != ShellTab.profile) _RailItem(tab: t, wide: wide, selected: t == current, badge: badge(t), onTap: () => onSelect(t)),
+              for (final item in const <Object>[ShellTab.home, 'Study', ShellTab.practice, ShellTab.mock, ShellTab.revise, ShellTab.analytics, 'College', ShellTab.live])
+                if (item is ShellTab)
+                  _RailItem(tab: item, wide: wide, selected: item == current, badge: badge(item), onTap: () => onSelect(item))
+                else if (wide)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 16, 12, 6),
+                    child: Text('$item'.toUpperCase(), style: const TextStyle(color: Color(0xFF7F8CA3), fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.9)),
+                  )
+                else
+                  const SizedBox(height: 10),
             ]),
           ),
           Padding(
@@ -206,7 +219,7 @@ class _RailItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fg = selected ? Palette.board : Palette.ink2;
+    final fg = selected ? Palette.gold : Palette.menuText;
     final icon = Badge(
       isLabelVisible: badge > 0,
       backgroundColor: Palette.warn,
@@ -216,7 +229,7 @@ class _RailItem extends StatelessWidget {
     );
     final label = Text(
       tab.label,
-      style: TextStyle(color: selected ? Palette.board : Palette.ink, fontSize: wide ? 15.5 : 11.5, fontWeight: selected ? FontWeight.w600 : FontWeight.w500),
+      style: TextStyle(color: selected ? Colors.white : Palette.menuText, fontSize: wide ? 15.5 : 11.5, fontWeight: selected ? FontWeight.w600 : FontWeight.w500),
       maxLines: 1,
       overflow: TextOverflow.fade,
       softWrap: false,
@@ -228,7 +241,7 @@ class _RailItem extends StatelessWidget {
         button: true,
         label: tab.label,
         child: Material(
-          color: selected ? Palette.boardSoft : Colors.transparent,
+          color: selected ? Colors.white.withValues(alpha: 0.09) : Colors.transparent,
           borderRadius: BorderRadius.circular(10),
           child: InkWell(
             borderRadius: BorderRadius.circular(10),
@@ -262,9 +275,17 @@ class _TopBar extends StatelessWidget {
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(tab.label, style: Theme.of(context).textTheme.titleLarge),
-            if (p != null) Text('${p.pucLabel} · ${p.stream} · ${p.sectionName}', style: const TextStyle(color: Palette.ink2, fontSize: 13)),
+            if (p != null)
+              Text(
+                [p.pucYear == 'PUC_2' ? 'Class 12' : 'Class 11', if (p.stream.isNotEmpty && p.stream != 'General') p.stream, 'Section ${p.sectionName}'].join(' \u00b7 '),
+                style: const TextStyle(color: Palette.ink2, fontSize: 13),
+              ),
           ]),
         ),
+        if (const {ShellTab.home, ShellTab.practice, ShellTab.mock, ShellTab.revise, ShellTab.analytics}.contains(tab) && MediaQuery.sizeOf(context).width >= 760) ...[
+          _ExamSwitch(app: app),
+          const SizedBox(width: 12),
+        ],
         _SyncPill(app: app),
         const SizedBox(width: 10),
         Semantics(
@@ -275,7 +296,7 @@ class _TopBar extends StatelessWidget {
             onTap: onProfile,
             child: CircleAvatar(
               radius: 20,
-              backgroundColor: Palette.boardSoft,
+              backgroundColor: Palette.gold,
               backgroundImage: app.photo != null ? MemoryImage(app.photo!) : null,
               child: app.photo == null
                   ? Text(initials(p?.fullName ?? app.lastStudentName ?? ''), style: const TextStyle(color: Palette.board, fontWeight: FontWeight.w600))
@@ -283,6 +304,57 @@ class _TopBar extends StatelessWidget {
             ),
           ),
         ),
+      ]),
+    );
+  }
+}
+
+/// NEET / JEE / KCET switch in the top bar, like the portal's tabs.
+class _ExamSwitch extends StatefulWidget {
+  const _ExamSwitch({required this.app});
+  final AppState app;
+
+  @override
+  State<_ExamSwitch> createState() => _ExamSwitchState();
+}
+
+class _ExamSwitchState extends State<_ExamSwitch> {
+  bool _busy = false;
+
+  Future<void> _pick(String id) async {
+    if (_busy || id == widget.app.exam?.id) return;
+    setState(() => _busy = true);
+    try {
+      await widget.app.chooseExam(id);
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not change the exam. Check Wi-Fi and try again.')));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final exams = widget.app.prep?.exams ?? const [];
+    if (exams.isEmpty) return const SizedBox.shrink();
+    final current = widget.app.exam?.id;
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(color: Palette.sunk, border: Border.all(color: Palette.line), borderRadius: BorderRadius.circular(12)),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        for (final e in exams)
+          Material(
+            color: e.id == current ? Palette.board : Colors.transparent,
+            borderRadius: BorderRadius.circular(9),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(9),
+              onTap: () => _pick(e.id),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+                child: Text(e.code, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5, color: e.id == current ? Colors.white : Palette.ink2)),
+              ),
+            ),
+          ),
       ]),
     );
   }

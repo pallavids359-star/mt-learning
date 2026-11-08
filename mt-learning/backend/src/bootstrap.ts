@@ -1,4 +1,4 @@
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+﻿import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
@@ -17,7 +17,7 @@ export async function createApp(options: { logger?: false } = {}): Promise<INest
   if (env.TRUST_PROXY) app.set('trust proxy', 1);
   app.disable('x-powered-by');
   app.use(helmet());
-  app.useBodyParser('json', { limit: '1mb' });
+  app.useBodyParser('json', { limit: '5mb' });
   app.enableCors({
     origin: env.CORS_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean),
     credentials: false,

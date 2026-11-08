@@ -1,4 +1,4 @@
-﻿import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { parse } from 'csv-parse/sync';
@@ -158,13 +158,21 @@ export class StudentsService {
   }
 
   async create(actor: StaffPrincipal, dto: CreateStudentDto, meta: RequestMeta) {
-    await this.assertSection(dto.sectionId);
+    if (dto.sectionId) await this.assertSection(dto.sectionId);
     if (dto.hostelId) await this.assertHostel(dto.hostelId);
+    const { pucYear: year, sectionName, sectionId: givenSection, rollNumber, ...rest } = dto;
     const tempPassword = temporaryPassword();
     const id = await this.db.transaction(async (tx) => {
+      const sectionId = givenSection ?? (await this.sectionFor(tx, year!, sectionName ?? 'A'));
       const [row] = await tx
         .insert(students)
-        .values({ ...dto, passwordHash: await hashSecret(tempPassword), mustChangePassword: true })
+        .values({
+          ...rest,
+          sectionId,
+          rollNumber: rollNumber || rollFromCode(dto.studentCode),
+          passwordHash: await hashSecret(tempPassword),
+          mustChangePassword: true,
+        })
         .returning({ id: students.id });
       await this.audit.record(
         actor,
@@ -175,6 +183,34 @@ export class StudentsService {
       return row.id;
     });
     return { student: await this.get(actor, id), temporaryPassword: tempPassword };
+  }
+
+  /**
+   * "Class 11" or "Class 12", section A, B, ... in the current academic year. The year, class and
+   * section are created the first time they are needed, so students can be added straight away.
+   */
+  private async sectionFor(tx: Pick<Database, 'select' | 'insert'>, year: 'PUC_1' | 'PUC_2', sectionName: string): Promise<string> {
+    let [ay] = await tx.select({ id: academicYears.id }).from(academicYears).where(eq(academicYears.isCurrent, true));
+    if (!ay) {
+      const now = new Date();
+      const start = now.getMonth() >= 5 ? now.getFullYear() : now.getFullYear() - 1;
+      const name = `${start}-${String((start + 1) % 100).padStart(2, '0')}`;
+      [ay] = await tx.select({ id: academicYears.id }).from(academicYears).where(eq(academicYears.name, name));
+      if (!ay) {
+        [ay] = await tx
+          .insert(academicYears)
+          .values({ name, startDate: `${start}-06-01`, endDate: `${start + 1}-03-31`, isCurrent: true })
+          .returning({ id: academicYears.id });
+      }
+    }
+    const className = year === 'PUC_1' ? 'Class 11' : 'Class 12';
+    let [cls] = await tx.select({ id: classes.id }).from(classes).where(and(eq(classes.academicYearId, ay.id), eq(classes.name, className)));
+    if (!cls) {
+      [cls] = await tx.insert(classes).values({ academicYearId: ay.id, pucYear: year, stream: 'General', name: className }).returning({ id: classes.id });
+    }
+    let [sec] = await tx.select({ id: sections.id }).from(sections).where(and(eq(sections.classId, cls.id), eq(sections.name, sectionName)));
+    if (!sec) [sec] = await tx.insert(sections).values({ classId: cls.id, name: sectionName }).returning({ id: sections.id });
+    return sec.id;
   }
 
   async update(actor: StaffPrincipal, id: string, dto: UpdateStudentDto, meta: RequestMeta) {
@@ -457,4 +493,10 @@ async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promis
     }),
   );
   return out;
+}
+
+/** Roll number from the Student ID: its last 3 digits (MT26057 -> 057), or the whole ID. */
+export function rollFromCode(code: string): string {
+  const m = code.match(/(\d{3})$/);
+  return m ? m[1] : code;
 }

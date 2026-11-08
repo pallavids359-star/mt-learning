@@ -8,11 +8,6 @@ class AppConfig {
 
   static const Duration requestTimeout = Duration(seconds: 20);
 
-  /// Attendance is kept in the college's Bridge app. This link opens it (the Bridge
-  /// Android app handles it if installed and set up for app links, otherwise the browser).
-  ///   flutter build apk --dart-define=BRIDGE_URL=https://bridge.college.example
-  static const String bridgeUrl = String.fromEnvironment('BRIDGE_URL');
-
   /// How often the app reports to the server that the tablet is alive.
   static const Duration heartbeatInterval = Duration(minutes: 15);
 }

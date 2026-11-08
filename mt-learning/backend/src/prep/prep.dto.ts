@@ -100,3 +100,40 @@ export class BrowseQueryDto {
   @ApiProperty() @IsString() @MaxLength(BANK_ID) chapterId: string;
   @ApiPropertyOptional({ default: 1 }) @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(10_000) page?: number;
 }
+
+/** Staff: pick random questions of one subject for a live test. */
+export class PickDto {
+  @ApiProperty() @IsString() @MaxLength(BANK_ID) examId: string;
+  @ApiProperty() @IsString() @MaxLength(BANK_ID) subjectId: string;
+
+  @ApiPropertyOptional({ type: [String], description: 'Chapters to use; none means the whole subject' })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(200)
+  @IsString({ each: true })
+  @MaxLength(BANK_ID, { each: true })
+  chapterIds?: string[];
+
+  @ApiPropertyOptional({ type: [String], description: 'Ticked topics; a chapter with none ticked gives all of it' })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(1000)
+  @IsString({ each: true })
+  @MaxLength(BANK_ID, { each: true })
+  topicIds?: string[];
+
+  @ApiPropertyOptional({ enum: ['11', '12'], description: 'Only Class 11 or Class 12 chapters' })
+  @IsOptional()
+  @IsIn(['11', '12'])
+  classLevel?: '11' | '12';
+
+  @ApiProperty({ example: 45 }) @IsInt() @Min(1) @Max(300) count: number;
+
+  @ApiPropertyOptional({ type: [String], description: 'Questions already in the test' })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(500)
+  @IsString({ each: true })
+  @MaxLength(BANK_ID, { each: true })
+  exclude?: string[];
+}

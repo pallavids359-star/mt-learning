@@ -37,6 +37,14 @@ const EXAM_TAGS: Record<string, string[]> = {
   KCET: ['KCET', 'CET', 'K-CET'],
 };
 const tagsOf = (exam: string) => EXAM_TAGS[exam] ?? [];
+
+/** Subjects each exam has. Questions tagged for an exam in another subject (Maths for NEET) are not shown. */
+const EXAM_SUBJECTS: Record<string, string[]> = {
+  NEET: ['physics', 'chemistry', 'biology', 'botany', 'zoology'],
+  JEE: ['physics', 'chemistry', 'mathematics', 'maths'],
+  KCET: ['physics', 'chemistry', 'mathematics', 'maths', 'biology', 'botany', 'zoology'],
+};
+const subjectAllowed = (exam: string, subject: string) => (EXAM_SUBJECTS[exam] ?? []).includes(subject.trim().toLowerCase());
 const TAG_VALUES = Object.entries(EXAM_TAGS)
   .flatMap(([exam, tags]) => tags.map((t) => `('${t}', '${exam}')`))
   .join(', ');
@@ -263,6 +271,7 @@ export class SupabaseQuestionBank implements QuestionBank {
 
     for (const r of rows) {
       const exam = r.exam;
+      if (!subjectAllowed(exam, r.subject)) continue;
       const sid = subjectIdOf(exam, r.subject);
       const cid = chapterIdOf(exam, r.subject, r.klass, r.chapter);
       const tid = topicIdOf(exam, r.subject, r.klass, r.chapter, r.topic);
@@ -328,6 +337,8 @@ export class SupabaseQuestionBank implements QuestionBank {
     if (!tags.length) return null;
     const params: unknown[] = [tags];
     const conds = [`array(select upper(trim(x)) from unnest(exams) as x) && $1::text[]`, USABLE];
+    params.push(EXAM_SUBJECTS[filter.examId] ?? []);
+    conds.push(`lower(trim(subject)) = any($${params.length}::text[])`);
     const p = (v: unknown) => {
       params.push(v);
       return `$${params.length}`;

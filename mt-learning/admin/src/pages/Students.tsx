@@ -1,4 +1,4 @@
-﻿import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
@@ -300,16 +300,17 @@ export function StudentsPage() {
   );
 }
 
+const SECTIONS = 'ABCDEFGH'.split('');
+
 function AddStudentForm({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient();
   const nav = useNavigate();
-  const classes = useClasses();
   const hostels = useHostels();
   const [f, setF] = useState({
     studentCode: '',
     fullName: '',
-    sectionId: '',
-    rollNumber: '',
+    pucYear: '',
+    sectionName: 'A',
     dateOfBirth: '',
     gender: '' as Gender | '',
     guardianName: '',
@@ -332,8 +333,8 @@ function AddStudentForm({ onClose }: { onClose: () => void }) {
         body: {
           studentCode: f.studentCode,
           fullName: f.fullName,
-          sectionId: f.sectionId,
-          rollNumber: f.rollNumber,
+          pucYear: f.pucYear,
+          sectionName: f.sectionName,
           dateOfBirth: f.dateOfBirth || null,
           gender: f.gender || null,
           guardianName: f.guardianName || null,
@@ -370,24 +371,27 @@ function AddStudentForm({ onClose }: { onClose: () => void }) {
 
   return (
     <form onSubmit={submit} className="grid-form">
-      <Field label="Student ID" hint="College-issued ID used to sign in">
+      <Field label="Student ID" hint="Used to sign in. The last 3 digits are the roll number.">
         <input required value={f.studentCode} onChange={upd('studentCode')} className="mono" autoFocus />
       </Field>
       <Field label="Full name">
         <input required value={f.fullName} onChange={upd('fullName')} />
       </Field>
-      <Field label="Class and section">
-        <select required value={f.sectionId} onChange={upd('sectionId')}>
+      <Field label="Class">
+        <select required value={f.pucYear} onChange={upd('pucYear')}>
           <option value="">Choose...</option>
-          {sectionOptions(classes.data).map((o) => (
-            <option key={o.id} value={o.id}>
-              {o.label}
+          <option value="PUC_1">Class 11 (1st PUC)</option>
+          <option value="PUC_2">Class 12 (2nd PUC)</option>
+        </select>
+      </Field>
+      <Field label="Section (optional)">
+        <select value={f.sectionName} onChange={upd('sectionName')}>
+          {SECTIONS.map((x) => (
+            <option key={x} value={x}>
+              {x}
             </option>
           ))}
         </select>
-      </Field>
-      <Field label="Roll number">
-        <input required value={f.rollNumber} onChange={upd('rollNumber')} />
       </Field>
       <Field label="Date of birth">
         <input type="date" value={f.dateOfBirth} onChange={upd('dateOfBirth')} />

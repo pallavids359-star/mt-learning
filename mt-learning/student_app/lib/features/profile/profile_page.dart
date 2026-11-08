@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/app_scope.dart';
-import '../../core/config.dart';
 import '../../core/format.dart';
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
@@ -84,14 +82,6 @@ class ProfilePage extends StatelessWidget {
             const Divider(),
           ],
           ListTile(
-            leading: const Icon(Icons.event_available_outlined),
-            title: const Text('My attendance'),
-            subtitle: const Text('Attendance is kept in the college Bridge app'),
-            trailing: const Icon(Icons.open_in_new),
-            onTap: () => _openBridge(context),
-          ),
-          const Divider(),
-          ListTile(
             leading: const Icon(Icons.pin_outlined),
             title: Text(app.lastHasPin || (p?.hasPin ?? false) ? 'Change PIN' : 'Set a PIN'),
             subtitle: const Text('Sign in faster on this tablet with 4 to 6 digits'),
@@ -124,12 +114,6 @@ class ProfilePage extends StatelessWidget {
         ]),
       ),
     ]);
-  }
-
-  Future<void> _openBridge(BuildContext context) async {
-    final uri = Uri.tryParse(AppConfig.bridgeUrl);
-    final ok = AppConfig.bridgeUrl.isNotEmpty && uri != null && uri.hasScheme && await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!ok && context.mounted) showSnack(context, 'Open the Bridge app to see your attendance. Ask the college office if you need help.');
   }
 
   Future<void> _signOut(BuildContext context) async {

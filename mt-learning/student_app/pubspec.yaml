@@ -14,7 +14,6 @@ dependencies:
   package_info_plus: ^8.0.0
   device_info_plus: ^10.1.0
   path_provider: ^2.1.4
-  url_launcher: ^6.3.1
   flutter_math_fork: ^0.7.3
   battery_plus: ^6.0.3
 

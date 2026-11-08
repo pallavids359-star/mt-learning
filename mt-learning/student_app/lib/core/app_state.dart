@@ -36,6 +36,9 @@ class AppState extends ChangeNotifier {
   SyncStatus syncStatus = SyncStatus.idle;
   DateTime? lastSyncedAt;
   String? tabletSerial;
+
+  /// Whether the staff PIN for the kiosk lock has been set on this tablet.
+  bool hasAdminPin = false;
   String? lastStudentCode;
   String? lastStudentName;
   bool lastHasPin = false;
@@ -69,11 +72,12 @@ class AppState extends ChangeNotifier {
 
   Future<void> start() async {
     tabletSerial = await store.readTabletSerial();
+    hasAdminPin = (await store.readAdminPin())?.isNotEmpty ?? false;
     final last = await store.readLastStudent();
     lastStudentCode = last.code;
     lastStudentName = last.name;
     lastHasPin = last.hasPin;
-    if (tabletSerial == null || tabletSerial!.isEmpty) {
+    if (tabletSerial == null || tabletSerial!.isEmpty || !hasAdminPin) {
       _go(AppStage.deviceSetup);
       return;
     }
@@ -96,11 +100,24 @@ class AppState extends ChangeNotifier {
     _startHeartbeat();
   }
 
-  Future<void> completeDeviceSetup(String serial) async {
+  Future<void> completeDeviceSetup(String serial, {required String adminPin}) async {
     final clean = serial.trim().toUpperCase();
     await store.writeTabletSerial(clean);
+    await store.writeAdminPin(adminPin);
     tabletSerial = clean;
-    _go(AppStage.signedOut);
+    hasAdminPin = true;
+    if (await store.readRefreshToken() == null) {
+      _go(AppStage.signedOut);
+    } else {
+      // A tablet set up before the admin PIN existed: carry on where it was.
+      await start();
+    }
+  }
+
+  /// Checks the staff PIN that unlocks the kiosk lock.
+  Future<bool> checkAdminPin(String pin) async {
+    final saved = await store.readAdminPin();
+    return saved != null && saved.isNotEmpty && saved == pin;
   }
 
   // ------------------------------------------------------------ auth

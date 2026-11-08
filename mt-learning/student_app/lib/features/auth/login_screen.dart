@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../core/app_scope.dart';
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
+import '../setup/admin_panel.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -141,7 +142,15 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         if (app.tabletSerial != null) ...[
           const SizedBox(height: 6),
-          Text('Tablet ${app.tabletSerial}', textAlign: TextAlign.center, style: t.bodySmall?.copyWith(color: Palette.ink2)),
+          // Staff: press and hold the tablet number to open the staff panel (asks for the staff PIN).
+          GestureDetector(
+            key: const Key('tabletLabel'),
+            onLongPress: () => openAdminPanel(context),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Text('Tablet ${app.tabletSerial}', textAlign: TextAlign.center, style: t.bodySmall?.copyWith(color: Palette.ink2)),
+            ),
+          ),
         ],
       ],
     );

@@ -19,15 +19,23 @@ class SecureStore {
   static const _lastStudentCode = 'last_student_code';
   static const _lastHasPin = 'last_has_pin';
   static const _lastName = 'last_student_name';
+  static const _adminPin = 'admin_pin';
 
   /// Keys that survive signing out (device setup and the "welcome back" PIN screen).
-  static const _keepOnSignOut = {_tabletSerial, _lastStudentCode, _lastHasPin, _lastName};
+  static const _keepOnSignOut = {_tabletSerial, _adminPin, _lastStudentCode, _lastHasPin, _lastName};
+
+  /// Keys that belong to the tablet, not a student, so even a full wipe keeps them.
+  static const _keepOnWipe = {_tabletSerial, _adminPin};
 
   Future<String?> readRefreshToken() => _s.read(key: _refresh);
   Future<void> writeRefreshToken(String? v) => v == null ? _s.delete(key: _refresh) : _s.write(key: _refresh, value: v);
 
   Future<String?> readTabletSerial() => _s.read(key: _tabletSerial);
   Future<void> writeTabletSerial(String v) => _s.write(key: _tabletSerial, value: v);
+
+  /// The staff PIN that unlocks the tablet's kiosk lock. Set by the device administrator at setup.
+  Future<String?> readAdminPin() => _s.read(key: _adminPin);
+  Future<void> writeAdminPin(String v) => _s.write(key: _adminPin, value: v);
 
   Future<({String? code, String? name, bool hasPin})> readLastStudent() async => (
         code: await _s.read(key: _lastStudentCode),
@@ -72,7 +80,7 @@ class SecureStore {
   Future<void> clearSession({bool wipe = false}) async {
     final all = await _s.readAll();
     for (final key in all.keys) {
-      if (_keepOnSignOut.contains(key) && !(wipe && key != _tabletSerial)) continue;
+      if (_keepOnSignOut.contains(key) && !(wipe && !_keepOnWipe.contains(key))) continue;
       if (!wipe && key.startsWith('outbox:')) continue;
       await _s.delete(key: key);
     }

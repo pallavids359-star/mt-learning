@@ -2,7 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsBoolean, IsDateString, IsIn, IsOptional, IsString, IsUUID, Matches, MaxLength, MinLength, ValidateIf } from 'class-validator';
 import { PageQueryDto } from '../common/dto/pagination.dto';
-import { accountStatus, gender, type AccountStatus, type Gender } from '../db/schema';
+import { accountStatus, gender, pucYear, type AccountStatus, type Gender, type PucYear } from '../db/schema';
 
 const trim = ({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value);
 const emptyToNull = ({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() || null : value);
@@ -17,8 +17,24 @@ export class CreateStudentDto {
   studentCode: string;
 
   @ApiProperty() @Transform(trim) @IsString() @MinLength(2) @MaxLength(120) fullName: string;
-  @ApiProperty() @IsUUID() sectionId: string;
-  @ApiProperty({ example: '12' }) @Transform(trim) @IsString() @MinLength(1) @MaxLength(20) rollNumber: string;
+  /** An existing section, or give `pucYear` (and optionally `sectionName`) instead. */
+  @ApiPropertyOptional() @ValidateIf((o: CreateStudentDto) => !o.pucYear) @IsUUID() sectionId?: string;
+  @ApiPropertyOptional({ enum: pucYear.enumValues, description: 'Class 11 or 12 in the current academic year; created if needed' })
+  @ValidateIf((o: CreateStudentDto) => !o.sectionId)
+  @IsIn(pucYear.enumValues, { message: 'Choose Class 11 or Class 12' })
+  pucYear?: PucYear;
+  @ApiPropertyOptional({ example: 'A', description: 'Section letter with pucYear; A when left out' })
+  @IsOptional()
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim().toUpperCase() || undefined : value))
+  @Matches(/^[A-Z0-9]{1,5}$/, { message: 'Section must be a letter such as A' })
+  sectionName?: string;
+  @ApiPropertyOptional({ example: '12', description: 'Last 3 digits of the Student ID when left out' })
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  @MinLength(1)
+  @MaxLength(20)
+  rollNumber?: string;
 
   @ApiPropertyOptional({ nullable: true }) @IsOptional() @Transform(emptyToNull) @ValidateIf((_, v) => v !== null) @IsDateString({ strict: true }) dateOfBirth?: string | null;
   @ApiPropertyOptional({ enum: gender.enumValues, nullable: true }) @IsOptional() @ValidateIf((_, v) => v !== null) @IsIn(gender.enumValues) gender?: Gender | null;

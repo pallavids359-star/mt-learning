@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, Logger, Module, Param, ParseUUIDPipe, Post, Put, Query } from '@nestjs/common';
+﻿import { Body, Controller, Delete, Get, HttpCode, Logger, Module, Param, ParseUUIDPipe, Post, Put, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { StudentPrincipal } from '../common/auth-principal';
 import { CurrentStudent, RequirePermissions, StudentOnly } from '../common/decorators';
@@ -6,7 +6,7 @@ import { Permission } from '../common/permissions';
 import { loadEnv } from '../config/env';
 import { QUESTION_BANK, type QuestionBank } from './bank';
 import { MongoQuestionBank } from './mongo-bank';
-import { AnswersDto, BookmarkDto, BrowseQueryDto, ExamQueryDto, HistoryQueryDto, MockDto, PracticeDto, ReviseDto, TargetDto } from './prep.dto';
+import { AnswersDto, BookmarkDto, BrowseQueryDto, ExamQueryDto, HistoryQueryDto, MockDto, PickDto, PracticeDto, ReviseDto, TargetDto } from './prep.dto';
 import { PrepService } from './prep.service';
 import { SampleQuestionBank } from './sample-bank';
 import { SupabaseQuestionBank } from './supabase-bank';
@@ -133,6 +133,15 @@ export class QuestionBankController {
     return this.svc.staffSyllabus(q.examId);
   }
 
+  @Get('chapters/:chapterId/topics') @RequirePermissions(Permission.TestsWrite)
+  topics(@Param('chapterId') chapterId: string) {
+    return this.svc.topics(chapterId.slice(0, 64));
+  }
+
+  @Post('pick') @HttpCode(200) @RequirePermissions(Permission.TestsWrite)
+  pick(@Body() dto: PickDto) {
+    return this.svc.pick(dto);
+  }
   @Get('questions') @RequirePermissions(Permission.TestsWrite)
   questions(@Query() q: BrowseQueryDto) {
     return this.svc.browse(q.chapterId, q.page ?? 1);

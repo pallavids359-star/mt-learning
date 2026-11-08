@@ -5,9 +5,9 @@ import 'package:flutter/material.dart';
 import '../data/api_client.dart';
 import 'theme.dart';
 
-/// The green "MT" mark shared with the admin portal.
+/// The gold "MT" mark shared with the admin portal.
 class BrandMark extends StatelessWidget {
-  const BrandMark({super.key, this.size = 44, this.background = Palette.board, this.foreground = Colors.white});
+  const BrandMark({super.key, this.size = 44, this.background = Palette.gold, this.foreground = Palette.board});
   final double size;
   final Color background;
   final Color foreground;
@@ -24,7 +24,7 @@ class BrandMark extends StatelessWidget {
   }
 }
 
-/// Split layout for setup, sign-in and password screens: a green panel with the
+/// Split layout for setup, sign-in and password screens: a navy panel with the
 /// app's promise on wide screens, a header strip on narrow ones, and the form.
 class AuthFrame extends StatelessWidget {
   const AuthFrame({super.key, required this.title, this.subtitle, required this.children});
@@ -62,17 +62,28 @@ class AuthFrame extends StatelessWidget {
             mainAxisAlignment: wide ? MainAxisAlignment.spaceBetween : MainAxisAlignment.start,
             children: [
               Row(children: [
-                const BrandMark(size: 42, background: Colors.white, foreground: Palette.board),
+                const BrandMark(size: 42),
                 const SizedBox(width: 12),
                 const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text('MT Learning', style: TextStyle(color: Colors.white, fontSize: 21, fontWeight: FontWeight.w600)),
-                  Text('Student app', style: TextStyle(color: Color(0xFFCFE6DC), fontSize: 13.5)),
+                  Text('Manchester Technologies', style: TextStyle(color: Palette.menuText, fontSize: 13.5)),
                 ]),
               ]),
               if (wide)
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('Practise every day.\nDo well in the exam.',
-                      style: t.displaySmall?.copyWith(color: Colors.white, fontWeight: FontWeight.w600, height: 1.08, letterSpacing: -0.8)),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                    decoration: BoxDecoration(color: Palette.gold.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(99)),
+                    child: const Text('STUDENT APP', style: TextStyle(color: Palette.gold, fontSize: 12.5, fontWeight: FontWeight.w700, letterSpacing: 0.8)),
+                  ),
+                  const SizedBox(height: 16),
+                  Text.rich(
+                    TextSpan(children: [
+                      const TextSpan(text: 'Practise every day.\n'),
+                      const TextSpan(text: 'Do well in the exam.', style: TextStyle(color: Palette.gold)),
+                    ]),
+                    style: t.displaySmall?.copyWith(color: Colors.white, fontWeight: FontWeight.w700, height: 1.1, letterSpacing: -0.8),
+                  ),
                   const SizedBox(height: 16),
                   Text('NEET, JEE and KCET practice, full mock tests and your college live tests, all on this tablet.',
                       style: t.titleMedium?.copyWith(color: Colors.white.withValues(alpha: 0.85), fontWeight: FontWeight.w400, height: 1.45)),
@@ -86,8 +97,8 @@ class AuthFrame extends StatelessWidget {
                         Container(
                           width: 28,
                           height: 28,
-                          decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.13), borderRadius: BorderRadius.circular(12)),
-                          child: const Icon(Icons.check, size: 16, color: Colors.white),
+                          decoration: BoxDecoration(color: Palette.gold.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(9)),
+                          child: const Icon(Icons.check, size: 16, color: Palette.gold),
                         ),
                         const SizedBox(width: 10),
                         Text(f, style: const TextStyle(color: Colors.white, fontSize: 15.5)),
